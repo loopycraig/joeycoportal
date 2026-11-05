@@ -21,11 +21,10 @@ export default function Home() {
       <main className="flex flex-1 items-center px-6 pb-24">
         <div className="mx-auto w-full max-w-2xl">
           <h1 className="text-4xl font-medium tracking-tight sm:text-5xl">
-            Timecards, without the back-and-forth.
+            Live Your Best Life
           </h1>
           <p className="mt-4 max-w-lg text-base text-muted-foreground">
-            Joeys log their hours and submit them in a few taps. Hosts review, approve, and
-            keep a clear record of every week.
+            Affordable rent meets help at home that pays for itself.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild>
