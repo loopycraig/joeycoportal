@@ -19,6 +19,7 @@ async function JoeyShell({ children }: { children: React.ReactNode }) {
       portalName="Joey portal"
       nav={[
         { href: "/joey", label: "Timecards" },
+        { href: "/joey/payments", label: "Payments"},
         { href: "/joey/hosts", label: "Hosts" },
       ]}
     >
