@@ -93,8 +93,8 @@ export function AgreementEditor({
   };
 
   return (
-    <div className="grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-      <div className="space-y-8 border-b px-4 py-6 sm:px-6 lg:border-b-0 lg:border-r">
+    <div className="grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+      <div className="space-y-8 border-b px-4 py-6 sm:px-6 lg:overflow-y-auto lg:border-b-0 lg:border-r">
         {groups.map((g) => {
           const defs = template.fields.filter((f) => f.group === g && isShown(f, fields));
           return (
@@ -160,7 +160,7 @@ export function AgreementEditor({
         )}
       </div>
 
-      <div className="min-w-0 px-4 py-6 sm:px-6">
+      <div className="min-w-0 px-4 py-6 sm:px-6 lg:overflow-y-auto">
         <p className="mb-4 text-xs text-muted-foreground">Preview. Highlighted text is what you&apos;ve filled in.</p>
         <AgreementDocument blocks={preview} signatures={[]} names={names} className="mx-auto max-w-2xl" />
       </div>
