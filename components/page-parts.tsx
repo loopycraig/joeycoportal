@@ -1,14 +1,18 @@
 // Plain building blocks, safe to use from server or client components.
 
+import { cn } from "@/lib/utils";
+
 export function PageHeader({
   title,
   actions,
+  className,
 }: {
   title: string;
   actions?: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b px-4 sm:px-6">
+    <header className={cn("flex h-12 shrink-0 items-center justify-between gap-4 border-b px-4 sm:px-6", className)}>
       <h1 className="text-sm font-medium">{title}</h1>
       {actions}
     </header>

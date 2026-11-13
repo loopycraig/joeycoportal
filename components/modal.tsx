@@ -9,11 +9,14 @@ export function Modal({
   open,
   onClose,
   title,
+  size = "md",
   children,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
+  /** "lg" for documents. */
+  size?: "md" | "lg";
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -29,7 +32,7 @@ export function Modal({
     <dialog
       ref={ref}
       onClose={onClose}
-      className="w-[calc(100%-2rem)] max-w-md rounded-lg border bg-popover p-0 text-popover-foreground shadow-2xl backdrop:bg-black/60"
+      className={`w-[calc(100%-2rem)] ${size === "lg" ? "max-w-2xl" : "max-w-md"} rounded-lg border bg-popover p-0 text-popover-foreground shadow-2xl backdrop:bg-black/60`}
     >
       <div className="flex h-11 items-center justify-between border-b px-4">
         <h2 className="text-sm font-medium">{title}</h2>
@@ -42,7 +45,8 @@ export function Modal({
           <X className="size-4" />
         </button>
       </div>
-      <div className="p-4">{open && children}</div>
+      {/* Long content scrolls inside the dialog; the title bar stays put. */}
+      <div className="max-h-[calc(100svh-6rem)] overflow-y-auto p-4">{open && children}</div>
     </dialog>
   );
 }
