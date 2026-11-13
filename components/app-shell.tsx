@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Profile } from "@/lib/profile";
-import { SidebarNav, SidebarLogout, type NavItem } from "@/components/sidebar-nav";
+import { SidebarNav, type NavItem } from "@/components/sidebar-nav";
+import { AccountMenu } from "@/components/account-menu";
 export { PageHeader, EmptyState, SectionHeader } from "@/components/page-parts";
 
 export function AppShell({
@@ -31,16 +32,16 @@ export function AppShell({
           </Link>
           <span aria-hidden className="h-4 w-px bg-foreground/20" />
           <span className="text-sm font-medium leading-none text-foreground/80">{portalName}</span>
+          {/* Phones: the account menu sits in the header instead of the footer */}
+          <div className="ml-auto md:hidden">
+            <AccountMenu name={displayName} email={profile.email} compact />
+          </div>
         </div>
 
         <SidebarNav items={nav} lockedNote={lockedNote} />
 
         <div className="mt-auto hidden border-t p-2 md:block">
-          <div className="px-2 py-1.5">
-            <p className="truncate text-sm">{displayName}</p>
-            <p className="truncate text-xs text-muted-foreground">{profile.email}</p>
-          </div>
-          <SidebarLogout />
+          <AccountMenu name={displayName} email={profile.email} />
         </div>
       </aside>
 

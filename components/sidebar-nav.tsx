@@ -1,10 +1,9 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Lock } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 /** `locked` items are shown greyed out (not links), e.g. portal pages a Joey gets once matched. */
 export type NavItem = { href: string; label: string; locked?: boolean };
@@ -52,32 +51,6 @@ export function SidebarNav({ items, lockedNote }: { items: NavItem[]; lockedNote
           </Link>
         );
       })}
-      <SidebarLogout className="md:hidden" />
     </nav>
-  );
-}
-
-export function SidebarLogout({ className }: { className?: string }) {
-  const router = useRouter();
-
-  const logout = async () => {
-    await createClient().auth.signOut();
-    router.push("/auth/login");
-    router.refresh();
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={logout}
-      className={cn(
-        "w-full whitespace-nowrap rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors",
-        "hover:bg-accent/60 hover:text-foreground",
-        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-        className,
-      )}
-    >
-      Log out
-    </button>
   );
 }
