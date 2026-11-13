@@ -1,7 +1,8 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { syncOnVisit } from "@/lib/clarify/sync";
-import { getApplicationBundle } from "@/lib/joey/queries";
+import { AGREEMENT_STAGES, getApplicationBundle } from "@/lib/joey/queries";
 import { CONTACT_EMAIL, EDITABLE_FIELDS, type ApplicationDraft } from "@/lib/joey/application";
 import { PageHeader, SectionHeader } from "@/components/app-shell";
 import { ApplicationForm } from "@/components/application/application-form";
@@ -27,6 +28,8 @@ async function ApplicationContent() {
   const profile = await getProfile();
   await syncOnVisit(profile.id);
   const { application, references, stages, events, currentStage } = await getApplicationBundle();
+  // From Match Ready on, the application lives in Agreements.
+  if (application.status === "submitted" && AGREEMENT_STAGES.includes(currentStage.key)) redirect("/joey/agreements");
   const bar = <JourneyBar steps={journeySteps(stages, events, currentStage)} />;
 
   if (application.status === "submitted") {

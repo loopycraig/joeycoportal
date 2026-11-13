@@ -100,7 +100,8 @@ export function DisclosureSigner({
   );
 }
 
-function DisclosureDocument({
+/** One document with its signature. Without onSign/onClose it's read-only (no buttons). */
+export function DisclosureDocument({
   disclosure: d,
   current,
   printedName,
@@ -110,8 +111,8 @@ function DisclosureDocument({
   disclosure: Disclosure;
   current: Signature;
   printedName: string;
-  onSign: (input: SignInput) => Promise<boolean>;
-  onClose: () => void;
+  onSign?: (input: SignInput) => Promise<boolean>;
+  onClose?: () => void;
 }) {
   const id = useId();
   const signed = Boolean(current.signature?.trim());
@@ -121,6 +122,7 @@ function DisclosureDocument({
   const [error, setError] = useState<string | null>(null);
 
   const sign = async () => {
+    if (!onSign) return;
     setSaving(true);
     setError(null);
     const ok = await onSign({ signature: name.trim(), version: d.version, copyRequested: d.copyOption ? copy : undefined });
@@ -207,22 +209,24 @@ function DisclosureDocument({
 
       {error && <p className="text-destructive">{error}</p>}
 
-      <div className="flex justify-end gap-2 border-t pt-4">
-        {signed ? (
-          <Button type="button" variant="outline" onClick={onClose}>
-            Close
-          </Button>
-        ) : (
-          <>
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Cancel
+      {onClose && (
+        <div className="flex justify-end gap-2 border-t pt-4">
+          {signed ? (
+            <Button type="button" variant="outline" onClick={onClose}>
+              Close
             </Button>
-            <Button type="button" onClick={sign} disabled={saving || name.trim().length < 2}>
-              {saving ? "Signing…" : (d.signLabel ?? "Sign and authorize")}
-            </Button>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <Button type="button" variant="ghost" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={sign} disabled={saving || name.trim().length < 2}>
+                {saving ? "Signing…" : (d.signLabel ?? "Sign and authorize")}
+              </Button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
