@@ -27,18 +27,14 @@ export const JOEY = {
 } as const;
 
 /**
- * Background check disclosure signatures, on the c_joey record. The push is commented out in
- * sync.ts for now; to turn it on, uncomment it there and set the field API names here
- * (null means "not sent", so a missing Clarify field can't fail the push).
- * TODO: create these fields on c_joey in Clarify and fill in their API names. Suggested:
- *   bgSignedAt      → "background_check_disclosure_signed_at"  (date/time)
- *   caSignedAt      → "ca_icr_disclosure_signed_at"            (date/time)
- *   caCopyRequested → "ca_icr_report_copy_requested"           (checkbox)
+ * Background check disclosure signatures, on the c_joey record (null means "not sent").
+ * Clarify custom fields have no date-time type, so the signed-at fields hold the Pacific
+ * calendar date; the exact timestamp stays in joey_applications.*_disclosure_signed_at.
  */
 export const DISCLOSURE_FIELDS: Record<"bgSignedAt" | "caSignedAt" | "caCopyRequested", string | null> = {
-  bgSignedAt: null,
-  caSignedAt: null,
-  caCopyRequested: null,
+  bgSignedAt: "background_check_disclosure_signed_at", // date
+  caSignedAt: "ca_icr_disclosure_signed_at", // date
+  caCopyRequested: "ca_icr_report_copy_requested", // boolean
 };
 
 /**
