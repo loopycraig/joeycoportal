@@ -34,11 +34,9 @@ export function ApplicationSummary({
       ["Authorized to work in the U.S.", a.work_authorized],
       ["School and degree", a.school_degree],
     ],
-    where: [
+    preferences: [
       ["Preferred cities", list(a.preferred_cities)],
       ["Move-in timing", a.move_in_timing],
-    ],
-    help: [
       ["Comfortable working with Hosts who are", a.host_preference],
       ["Comfortable helping with", list(a.services)],
     ],
@@ -46,7 +44,7 @@ export function ApplicationSummary({
       ["Why you want to be a Joey", a.why_joey],
       ["How you heard about us", a.heard_about],
     ],
-    disclosures: [
+    acknowledgements: [
       [
         "Background check disclosure",
         a.bg_disclosure_signature ? `Signed by ${a.bg_disclosure_signature}, ${date(a.bg_disclosure_signed_at, true)}` : null,
@@ -56,9 +54,10 @@ export function ApplicationSummary({
         a.ca_disclosure_signature ? `Signed by ${a.ca_disclosure_signature}, ${date(a.ca_disclosure_signed_at, true)}` : null,
       ],
       ["Free copy of the report", a.ca_report_copy_requested === null ? null : a.ca_report_copy_requested ? "Yes" : "No"],
-    ],
-    conduct: [
-      ["Signed", a.conduct_signature ? `${a.conduct_signature}, ${date(a.conduct_signed_at, true)}` : null],
+      [
+        "Code of Conduct",
+        a.conduct_signature ? `Signed by ${a.conduct_signature}, ${date(a.conduct_signed_at, true)}` : null,
+      ],
       ["News and updates", a.news_opt_in === null ? null : a.news_opt_in ? "Yes" : "No"],
     ],
   };

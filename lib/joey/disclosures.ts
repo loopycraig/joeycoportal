@@ -1,9 +1,10 @@
-// Background check disclosures a Joey reads and signs in their application.
-// The text is copied word for word from JoeyCo's legal documents. Don't edit it here
-// without a new version from legal; bump `version` whenever the text changes, since
-// the version is stored with each signature.
+// Documents a Joey reads and signs in the Acknowledgements section of their application:
+// the background check disclosures and the Code of Conduct.
+// The disclosure text is copied word for word from JoeyCo's legal documents. Don't edit any
+// of it here without a new version; bump `version` whenever the text changes, since the
+// version is stored with each signature.
 
-export type DisclosureId = "bg" | "ca";
+export type DisclosureId = "bg" | "ca" | "conduct";
 
 type Block = { kind: "p"; text: string } | { kind: "item"; n: number; heading: string; text: string };
 
@@ -15,7 +16,12 @@ export type Disclosure = {
   title: string[];
   version: string;
   body: Block[];
+  /** The statement the Joey signs under. */
   authorization: string;
+  /** Heading over that statement. Defaults to "Authorization". */
+  authorizationHeading?: string;
+  /** The sign button. Defaults to "Sign and authorize". */
+  signLabel?: string;
   /** The California disclosure lets the Joey ask for a free copy of the report. */
   copyOption?: string;
 };
@@ -87,5 +93,25 @@ export const DISCLOSURES: Disclosure[] = [
     copyOption: "I want a free copy of any investigative consumer report obtained about me.",
     authorization:
       "I have read and understand this disclosure. I authorize JoeyCo to obtain an investigative consumer report about me as described above.",
+  },
+  {
+    id: "conduct",
+    name: "JoeyCo Code of Conduct",
+    title: ["JoeyCo Code of Conduct"],
+    version: "conduct-2026-11",
+    body: [
+      { kind: "p", text: "I will treat all members of the JoeyCo Community with respect and kindness." },
+      {
+        kind: "p",
+        text: "I will honor each individual's right to live their values, even when they are not the same as mine.",
+      },
+      {
+        kind: "p",
+        text: "I understand that failure to abide by these core principles will result in exclusion or expulsion from the JoeyCo Community.",
+      },
+    ],
+    authorizationHeading: "Agreement",
+    authorization: "By signing below and submitting my application, I am committing to the JoeyCo Code of Conduct.",
+    signLabel: "Sign",
   },
 ];

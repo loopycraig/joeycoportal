@@ -32,16 +32,18 @@ function pacificDate(iso: string | null) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date(iso));
 }
 
-/** Disclosure signed-at dates and the free-copy choice, for whichever Clarify fields are configured. */
+/** Acknowledgement signed-at dates and the free-copy choice, for whichever Clarify fields are configured. */
 function disclosureAttributes(app: {
   bg_disclosure_signed_at: string | null;
   ca_disclosure_signed_at: string | null;
   ca_report_copy_requested: boolean | null;
+  conduct_signed_at: string | null;
 }) {
   const pairs: [string | null, unknown][] = [
     [DISCLOSURE_FIELDS.bgSignedAt, pacificDate(app.bg_disclosure_signed_at)],
     [DISCLOSURE_FIELDS.caSignedAt, pacificDate(app.ca_disclosure_signed_at)],
     [DISCLOSURE_FIELDS.caCopyRequested, app.ca_report_copy_requested],
+    [DISCLOSURE_FIELDS.conductSignedAt, pacificDate(app.conduct_signed_at)],
   ];
   return Object.fromEntries(pairs.filter((p): p is [string, unknown] => p[0] !== null));
 }
@@ -134,12 +136,14 @@ export async function pushApplication(admin: Admin, joeyId: string): Promise<{ o
         await admin.from("joey_references").update({ clarify_person_id: refPerson.id }).eq("id", r.id);
       }
 
-      const refAttributes = {
+      // References added before types were asked for have none, so it's left out rather than blanked.
+      const refAttributes = dropEmpty({
         [REFERENCE.name]: r.full_name,
+        [REFERENCE.type]: r.reference_type,
         [REFERENCE.email]: r.email,
         [REFERENCE.phone]: r.phone,
         [REFERENCE.bio]: `${r.relationship}. Known for ${r.known_for}.`,
-      };
+      });
       if (r.clarify_reference_id) {
         await updateRecord(REFERENCE.object, r.clarify_reference_id, refAttributes);
       } else {

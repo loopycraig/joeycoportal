@@ -16,6 +16,7 @@ export type Application = {
   why_joey: string | null;
   heard_about: string | null;
   conduct_signature: string | null;
+  conduct_version: string | null;
   conduct_signed_at: string | null;
   news_opt_in: boolean | null;
   // Background check disclosures (lib/joey/disclosures.ts). *_signed_at is stamped by the database.
@@ -35,6 +36,8 @@ export type Application = {
 export type Reference = {
   id: string;
   full_name: string;
+  /** One of REFERENCE_TYPES. Null on references added before types were asked for. */
+  reference_type: ReferenceType | null;
   relationship: string;
   email: string;
   phone: string;
@@ -42,6 +45,16 @@ export type Reference = {
 };
 
 export type ReferenceInput = Omit<Reference, "id">;
+
+/** Must match the options on Clarify's c_reference.type field exactly. */
+export const REFERENCE_TYPES = ["Professional", "Institutional", "Landlord", "Housemate", "Personal"] as const;
+export type ReferenceType = (typeof REFERENCE_TYPES)[number];
+
+/** Shown under the picker so Joeys can tell the types apart. */
+export const REFERENCE_TYPE_HINT =
+  "Professional: a manager or coworker. Institutional: a professor, advisor, or coach. Landlord: someone you've rented from. Housemate: someone you've lived with. Personal: anyone else who knows you well, other than family.";
+
+export const REFERENCE_SELECT = "id, full_name, reference_type, relationship, email, phone, known_for";
 
 /** The columns a Joey can write while their application is a draft. */
 export const EDITABLE_FIELDS = [
@@ -58,6 +71,7 @@ export const EDITABLE_FIELDS = [
   "why_joey",
   "heard_about",
   "conduct_signature",
+  "conduct_version",
   "news_opt_in",
   "bg_disclosure_signature",
   "bg_disclosure_version",
@@ -70,7 +84,7 @@ export type EditableField = (typeof EDITABLE_FIELDS)[number];
 export type ApplicationDraft = Pick<Application, EditableField>;
 
 export const APPLICATION_SELECT =
-  "joey_id, first_name, last_name, phone, date_of_birth, work_authorized, school_degree, host_preference, preferred_cities, move_in_timing, services, why_joey, heard_about, conduct_signature, conduct_signed_at, news_opt_in, bg_disclosure_signature, bg_disclosure_version, bg_disclosure_signed_at, ca_disclosure_signature, ca_disclosure_version, ca_disclosure_signed_at, ca_report_copy_requested, status, submitted_at, stage_key, stage_changed_at";
+  "joey_id, first_name, last_name, phone, date_of_birth, work_authorized, school_degree, host_preference, preferred_cities, move_in_timing, services, why_joey, heard_about, conduct_signature, conduct_version, conduct_signed_at, news_opt_in, bg_disclosure_signature, bg_disclosure_version, bg_disclosure_signed_at, ca_disclosure_signature, ca_disclosure_version, ca_disclosure_signed_at, ca_report_copy_requested, status, submitted_at, stage_key, stage_changed_at";
 
 // ─────────────────────────────────────────────
 // Answer choices
@@ -152,9 +166,6 @@ export const HEARD_ABOUT_OPTIONS = [
   "Other",
 ];
 
-export const CODE_OF_CONDUCT =
-  "By writing my name below and submitting my application, I am committing to the JoeyCo Code of Conduct. I will treat all members of the JoeyCo Community with respect and kindness. I will honor each individual's right to live their values, even when they are not the same as mine. I understand that failure to abide by these core principles will result in exclusion or expulsion from the JoeyCo Community.";
-
 export const MIN_REFERENCES = 2;
 export const MAX_REFERENCES = 5;
 
@@ -162,7 +173,7 @@ export const MAX_REFERENCES = 5;
 // Sections (drive the form, the checklist, and error messages)
 // ─────────────────────────────────────────────
 
-export type SectionId = "about" | "where" | "help" | "story" | "references" | "disclosures" | "conduct";
+export type SectionId = "about" | "preferences" | "story" | "references" | "acknowledgements";
 
 export const SECTIONS: { id: SectionId; title: string; checklistLabel: string; keys: string[] }[] = [
   {
@@ -172,16 +183,10 @@ export const SECTIONS: { id: SectionId; title: string; checklistLabel: string; k
     keys: ["first_name", "last_name", "phone", "date_of_birth", "under_18", "work_authorized", "school_degree"],
   },
   {
-    id: "where",
-    title: "Where and when",
-    checklistLabel: "Choose your cities and timing",
-    keys: ["preferred_cities", "move_in_timing"],
-  },
-  {
-    id: "help",
-    title: "How you'd help",
-    checklistLabel: "Pick the help you're comfortable offering",
-    keys: ["host_preference", "services"],
+    id: "preferences",
+    title: "Match preferences",
+    checklistLabel: "Choose your cities, timing, and the help you'd offer",
+    keys: ["preferred_cities", "move_in_timing", "host_preference", "services"],
   },
   {
     id: "story",
@@ -196,16 +201,10 @@ export const SECTIONS: { id: SectionId; title: string; checklistLabel: string; k
     keys: ["references"],
   },
   {
-    id: "disclosures",
-    title: "Background check",
-    checklistLabel: "Read and sign the background check disclosures",
-    keys: ["bg_disclosure_signature", "ca_disclosure_signature"],
-  },
-  {
-    id: "conduct",
-    title: "Code of Conduct",
-    checklistLabel: "Sign the Code of Conduct",
-    keys: ["conduct_signature", "news_opt_in"],
+    id: "acknowledgements",
+    title: "Acknowledgements",
+    checklistLabel: "Read and sign the background check disclosures and the Code of Conduct",
+    keys: ["bg_disclosure_signature", "ca_disclosure_signature", "conduct_signature", "news_opt_in"],
   },
 ];
 
@@ -223,7 +222,7 @@ export const MISSING_LABELS: Record<string, string> = {
   services: "At least one kind of help",
   why_joey: "Why you want to be a Joey",
   heard_about: "How you heard about us",
-  conduct_signature: "Your signature",
+  conduct_signature: "Your signature on the Code of Conduct",
   news_opt_in: "Your choice about news and updates",
   bg_disclosure_signature: "Your signature on the background check disclosure",
   ca_disclosure_signature: "Your signature on the California disclosure",
@@ -269,6 +268,7 @@ export function sectionProgress(missing: string[]) {
 
 export function validateReference(r: ReferenceInput): string | null {
   if (blank(r.full_name)) return "Add their name.";
+  if (!r.reference_type || !REFERENCE_TYPES.includes(r.reference_type)) return "Choose the type of reference.";
   if (blank(r.relationship)) return "Add how you know them.";
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(r.email.trim())) return "Add a valid email address.";
   if (r.phone.replace(/\D/g, "").length < 10) return "Add a phone number with area code.";

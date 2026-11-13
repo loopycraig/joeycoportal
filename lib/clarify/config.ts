@@ -27,31 +27,33 @@ export const JOEY = {
 } as const;
 
 /**
- * Background check disclosure signatures, on the c_joey record (null means "not sent").
+ * Acknowledgement signatures (background check disclosures and Code of Conduct), on the
+ * c_joey record (null means "not sent"). JOEY.codeOfConductSigned is sent as well.
  * Clarify custom fields have no date-time type, so the signed-at fields hold the Pacific
- * calendar date; the exact timestamp stays in joey_applications.*_disclosure_signed_at.
+ * calendar date; the exact timestamp stays in joey_applications.*_signed_at.
  */
-export const DISCLOSURE_FIELDS: Record<"bgSignedAt" | "caSignedAt" | "caCopyRequested", string | null> = {
+export const DISCLOSURE_FIELDS: Record<"bgSignedAt" | "caSignedAt" | "caCopyRequested" | "conductSignedAt", string | null> = {
   bgSignedAt: "background_check_disclosure_signed_at", // date
   caSignedAt: "ca_icr_disclosure_signed_at", // date
   caCopyRequested: "ca_icr_report_copy_requested", // boolean
+  conductSignedAt: "code_of_conduct_signed_at", // date
 };
 
 /**
  * The References object. Each portal reference becomes one record, linked to the Joey's
- * c_joey record and to a Person record for the reference.
- * TODO: confirm the object and field API names in Clarify (Settings → Objects → References).
+ * c_joey record and to a Person record for the reference. Names checked against Clarify's schema.
  */
 export const REFERENCE = {
   object: "c_reference",
-  joeyLink: "joey", // relationship to c_joey
-  personLink: "person", // relationship to the reference's Person record
+  joeyLink: "joey_id", // relationship to c_joey
+  personLink: "person_id", // relationship to the reference's Person record
 
   name: "name",
+  type: "type", // single select: Professional, Institutional, Landlord, Housemate, Personal
   email: "email",
   phone: "phone",
-  bio: "bio_of_the_reference", // "Manager at Bruin Café. Known for 2 years."
-  // stage, type, notes and interview notes are left for the team
+  bio: "bio", // "Manager at Bruin Café. Known for 2 years."
+  // stage, notes and interview notes are left for the team
 } as const;
 
 /** Values written on the first push. Later pushes never touch the stage. */
