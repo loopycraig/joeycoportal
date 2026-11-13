@@ -121,6 +121,8 @@ export function ApplicationForm({
       return;
     }
     setSubmitting(true);
+    // The news toggle starts off; saving that explicitly records the choice.
+    if (draft.news_opt_in === null) update("news_opt_in", false);
     if (!(await flush())) {
       setSubmitting(false);
       return;
@@ -141,19 +143,29 @@ export function ApplicationForm({
     <div className="lg:grid lg:grid-cols-[13rem_1fr]">
       {/* Section list with completion */}
       <nav aria-label="Application sections" className="hidden border-r lg:block">
-        <ol className="sticky top-[var(--journey-h,0px)] space-y-0.5 p-4">
-          {sections.map((s, i) => (
-            <li key={s.id}>
-              <a
-                href={`#${s.id}`}
-                className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <StepDot complete={s.complete} index={i + 1} flagged={showMissing && !s.complete} />
-                {s.title}
-              </a>
-            </li>
-          ))}
-        </ol>
+        <div className="sticky top-[var(--journey-h,0px)] p-4">
+          <ol className="space-y-0.5">
+            {sections.map((s, i) => (
+              <li key={s.id}>
+                <a
+                  href={`#${s.id}`}
+                  className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <StepDot complete={s.complete} index={i + 1} flagged={showMissing && !s.complete} />
+                  {s.title}
+                </a>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-3 space-y-0.5 border-t px-2 pt-3 text-xs text-muted-foreground">
+            <p className="text-foreground">
+              {done} of {SECTIONS.length} sections complete
+            </p>
+            <p aria-live="polite">
+              <SaveStatus state={save} />
+            </p>
+          </div>
+        </div>
       </nav>
 
       <div className="min-w-0">
@@ -252,43 +264,39 @@ export function ApplicationForm({
           id="acknowledgements"
           intro="Before we can run your background check, please read and sign each of these. Each opens on its own page."
         >
-          <div className="space-y-6">
-            <DisclosureSigner
-              printedName={[draft.first_name, draft.last_name].filter(Boolean).join(" ")}
-              signatures={{
-                bg: { signature: draft.bg_disclosure_signature, signedAt: signedAt.bg },
-                ca: {
-                  signature: draft.ca_disclosure_signature,
-                  signedAt: signedAt.ca,
-                  copyRequested: draft.ca_report_copy_requested,
-                },
-                conduct: { signature: draft.conduct_signature, signedAt: signedAt.conduct },
-              }}
-              onSign={signDisclosure}
-              missing={{
-                bg: miss("bg_disclosure_signature"),
-                ca: miss("ca_disclosure_signature"),
-                conduct: miss("conduct_signature"),
-              }}
-            />
-            <ChoiceChips legend="Get news and updates from JoeyCo?" multiple={false}
-              options={[{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]}
-              value={draft.news_opt_in === null ? [] : [draft.news_opt_in ? "yes" : "no"]}
-              onChange={(v) => update("news_opt_in", v[0] === "yes")} missing={miss("news_opt_in")} />
-          </div>
+          <DisclosureSigner
+            printedName={[draft.first_name, draft.last_name].filter(Boolean).join(" ")}
+            signatures={{
+              bg: { signature: draft.bg_disclosure_signature, signedAt: signedAt.bg },
+              ca: {
+                signature: draft.ca_disclosure_signature,
+                signedAt: signedAt.ca,
+                copyRequested: draft.ca_report_copy_requested,
+              },
+              conduct: { signature: draft.conduct_signature, signedAt: signedAt.conduct },
+            }}
+            onSign={signDisclosure}
+            missing={{
+              bg: miss("bg_disclosure_signature"),
+              ca: miss("ca_disclosure_signature"),
+              conduct: miss("conduct_signature"),
+            }}
+          />
         </Section>
 
         {/* Submit bar */}
         <div className="sticky bottom-0 border-t bg-background/95 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {/* On wide screens the side nav shows these instead; this div still pushes the controls right. */}
             <div className="min-w-0 flex-1 text-sm">
-              <p>
+              <p className="lg:hidden">
                 {done} of {SECTIONS.length} sections complete
               </p>
-              <p className="text-xs text-muted-foreground" aria-live="polite">
+              <p className="text-xs text-muted-foreground lg:hidden" aria-live="polite">
                 <SaveStatus state={save} />
               </p>
             </div>
+            <NewsToggle checked={Boolean(draft.news_opt_in)} onChange={(v) => update("news_opt_in", v)} />
             <Button type="button" onClick={submit} disabled={submitting}>
               {submitting ? "Submitting…" : "Submit application"}
             </Button>
@@ -324,6 +332,33 @@ function Section({ id, intro, children }: { id: SectionId; intro?: string; child
   );
 }
 
+/** Opt-in for JoeyCo news, beside Submit. Off until the Joey turns it on. */
+function NewsToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={cn(
+          "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          checked ? "border-foreground bg-foreground" : "bg-muted",
+        )}
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "inline-block size-3.5 rounded-full bg-background shadow transition-transform",
+            checked ? "translate-x-4" : "translate-x-0.5",
+          )}
+        />
+      </button>
+      Email me JoeyCo news
+    </label>
+  );
+}
+
 function StepDot({ complete, index, flagged }: { complete: boolean; index: number; flagged: boolean }) {
   return (
     <span
@@ -343,7 +378,7 @@ function StepDot({ complete, index, flagged }: { complete: boolean; index: numbe
 function SaveStatus({ state }: { state: SaveState }) {
   switch (state.kind) {
     case "idle":
-      return <>Your answers save automatically.</>;
+      return <>Saves automatically</>;
     case "saving":
       return <>Saving…</>;
     case "saved":
