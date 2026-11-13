@@ -12,7 +12,6 @@ import { DisclosureSigner, type SignInput } from "@/components/application/discl
 import type { DisclosureId } from "@/lib/joey/disclosures";
 import { saveApplicationDraft, submitApplication } from "@/lib/joey/actions";
 import {
-  CODE_OF_CONDUCT,
   HEARD_ABOUT_OPTIONS,
   HOST_PREFERENCE_OPTIONS,
   MISSING_LABELS,
@@ -78,11 +77,14 @@ export function ApplicationForm({
     timer.current = setTimeout(flush, 700);
   };
 
-  // Signing a disclosure saves straight away rather than waiting for autosave.
+  // Signing a document saves straight away rather than waiting for autosave.
   const signDisclosure = async (id: DisclosureId, input: SignInput) => {
     if (id === "bg") {
       update("bg_disclosure_signature", input.signature);
       update("bg_disclosure_version", input.version);
+    } else if (id === "conduct") {
+      update("conduct_signature", input.signature);
+      update("conduct_version", input.version);
     } else {
       update("ca_disclosure_signature", input.signature);
       update("ca_disclosure_version", input.version);
@@ -205,7 +207,7 @@ export function ApplicationForm({
           </div>
         </Section>
 
-        <Section id="where">
+        <Section id="preferences">
           <div className="space-y-6">
             <CityPicker legend="Preferred cities" hint="Choose every city you'd move to. Not on our list? Type it in."
               value={draft.preferred_cities}
@@ -213,11 +215,6 @@ export function ApplicationForm({
             <ChoiceChips legend="When are you looking to move in?" multiple={false}
               options={MOVE_IN_OPTIONS} value={draft.move_in_timing ? [draft.move_in_timing] : []}
               onChange={(v) => update("move_in_timing", v[0] ?? null)} missing={miss("move_in_timing")} />
-          </div>
-        </Section>
-
-        <Section id="help">
-          <div className="space-y-6">
             <ChoiceChips legend="I'd be comfortable working with Hosts who are" multiple={false}
               options={HOST_PREFERENCE_OPTIONS} value={draft.host_preference ? [draft.host_preference] : []}
               onChange={(v) => update("host_preference", v[0] ?? null)} missing={miss("host_preference")} />
@@ -252,36 +249,28 @@ export function ApplicationForm({
         </Section>
 
         <Section
-          id="disclosures"
-          intro="Before we can run your background check, please read these two disclosures and sign each one. Each opens on its own page."
+          id="acknowledgements"
+          intro="Before we can run your background check, please read and sign each of these. Each opens on its own page."
         >
-          <DisclosureSigner
-            printedName={[draft.first_name, draft.last_name].filter(Boolean).join(" ")}
-            signatures={{
-              bg: { signature: draft.bg_disclosure_signature, signedAt: signedAt.bg },
-              ca: {
-                signature: draft.ca_disclosure_signature,
-                signedAt: signedAt.ca,
-                copyRequested: draft.ca_report_copy_requested,
-              },
-            }}
-            onSign={signDisclosure}
-            missing={{ bg: miss("bg_disclosure_signature"), ca: miss("ca_disclosure_signature") }}
-          />
-        </Section>
-
-        <Section id="conduct">
-          <div className="space-y-5">
-            <blockquote className="max-w-prose border-l-2 pl-4 text-sm leading-relaxed text-muted-foreground">
-              {CODE_OF_CONDUCT}
-            </blockquote>
-            <Field label="Type your full name to sign" missing={miss("conduct_signature")} className="sm:max-w-sm">
-              {(id, d) => (
-                <TextInput id={id} aria-describedby={d} autoComplete="name" invalid={miss("conduct_signature")}
-                  className="font-serif text-base italic"
-                  value={draft.conduct_signature ?? ""} onChange={(e) => update("conduct_signature", e.target.value)} />
-              )}
-            </Field>
+          <div className="space-y-6">
+            <DisclosureSigner
+              printedName={[draft.first_name, draft.last_name].filter(Boolean).join(" ")}
+              signatures={{
+                bg: { signature: draft.bg_disclosure_signature, signedAt: signedAt.bg },
+                ca: {
+                  signature: draft.ca_disclosure_signature,
+                  signedAt: signedAt.ca,
+                  copyRequested: draft.ca_report_copy_requested,
+                },
+                conduct: { signature: draft.conduct_signature, signedAt: signedAt.conduct },
+              }}
+              onSign={signDisclosure}
+              missing={{
+                bg: miss("bg_disclosure_signature"),
+                ca: miss("ca_disclosure_signature"),
+                conduct: miss("conduct_signature"),
+              }}
+            />
             <ChoiceChips legend="Get news and updates from JoeyCo?" multiple={false}
               options={[{ value: "yes", label: "Yes" }, { value: "no", label: "No" }]}
               value={draft.news_opt_in === null ? [] : [draft.news_opt_in ? "yes" : "no"]}

@@ -7,6 +7,7 @@ import { deleteReferenceRecord, pushApplication } from "@/lib/clarify/sync";
 import { clarifyConfigured } from "@/lib/clarify/client";
 import {
   EDITABLE_FIELDS,
+  REFERENCE_SELECT,
   validateReference,
   type ApplicationDraft,
   type Reference,
@@ -47,11 +48,10 @@ export async function saveApplicationDraft(patch: Partial<ApplicationDraft>): Pr
   return { ok: true, savedAt: data[0].updated_at as string };
 }
 
-const REF_SELECT = "id, full_name, relationship, email, phone, known_for";
-
 function cleanReference(r: ReferenceInput): ReferenceInput {
   return {
     full_name: r.full_name.trim(),
+    reference_type: r.reference_type,
     relationship: r.relationship.trim(),
     email: r.email.trim().toLowerCase(),
     phone: r.phone.trim(),
@@ -72,7 +72,7 @@ export async function addReference(input: ReferenceInput): Promise<Result<{ refe
   const { data, error } = await supabase
     .from("joey_references")
     .insert({ ...r, joey_id: uid })
-    .select(REF_SELECT)
+    .select(REFERENCE_SELECT)
     .single();
   if (error) {
     if (error.message.includes("up to 5")) return { ok: false, error: "You can list up to 5 references." };
@@ -90,7 +90,7 @@ export async function updateReference(id: string, input: ReferenceInput): Promis
 
   const supabase = await createClient();
   const uid = await currentUserId(supabase);
-  const { data, error } = await supabase.from("joey_references").update(r).eq("id", id).select(REF_SELECT);
+  const { data, error } = await supabase.from("joey_references").update(r).eq("id", id).select(REFERENCE_SELECT);
   if (error) return { ok: false, error: "Couldn't save that reference. Check the details and try again." };
   if (!data || data.length === 0) return { ok: false, error: LOCKED_REFS };
   await afterReferenceChange(uid);

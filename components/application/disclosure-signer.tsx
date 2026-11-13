@@ -26,7 +26,7 @@ const stamp = (iso: string) =>
   });
 
 /**
- * The background check disclosures. Each opens in a modal as its own document; the Joey signs
+ * The documents in Acknowledgements: background check disclosures and the Code of Conduct. Each opens in a modal as its own document; the Joey signs
  * by typing their full name. Signing saves right away, and the database stamps the time.
  */
 export function DisclosureSigner({
@@ -168,7 +168,7 @@ function DisclosureDocument({
 
       <section aria-labelledby={`${id}-auth`} className="space-y-4 border-t pt-5">
         <h3 id={`${id}-auth`} className="text-center text-sm font-semibold uppercase tracking-wide">
-          Authorization
+          {d.authorizationHeading ?? "Authorization"}
         </h3>
         <p>{d.authorization}</p>
 
@@ -218,7 +218,7 @@ function DisclosureDocument({
               Cancel
             </Button>
             <Button type="button" onClick={sign} disabled={saving || name.trim().length < 2}>
-              {saving ? "Signing…" : "Sign and authorize"}
+              {saving ? "Signing…" : (d.signLabel ?? "Sign and authorize")}
             </Button>
           </>
         )}

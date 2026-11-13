@@ -2,7 +2,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/profile";
-import { APPLICATION_SELECT, type Application, type Reference } from "@/lib/joey/application";
+import { APPLICATION_SELECT, REFERENCE_SELECT, type Application, type Reference } from "@/lib/joey/application";
 
 export type Stage = {
   key: string;
@@ -52,7 +52,7 @@ export const getApplicationBundle = cache(async () => {
     supabase.from("joey_applications").select(APPLICATION_SELECT).single(),
     supabase
       .from("joey_references")
-      .select("id, full_name, relationship, email, phone, known_for")
+      .select(REFERENCE_SELECT)
       .order("created_at"),
     supabase.from("application_stages").select("*").order("sort_order"),
     supabase.from("application_stage_events").select("stage_key, occurred_at").order("occurred_at"),

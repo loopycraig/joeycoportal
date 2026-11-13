@@ -2,17 +2,19 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Field, TextInput } from "@/components/application/fields";
+import { Field, SelectInput, TextInput } from "@/components/application/fields";
 import { addReference, removeReference, updateReference } from "@/lib/joey/actions";
 import {
   MAX_REFERENCES,
   MIN_REFERENCES,
+  REFERENCE_TYPE_HINT,
+  REFERENCE_TYPES,
   validateReference,
   type Reference,
   type ReferenceInput,
 } from "@/lib/joey/application";
 
-const EMPTY: ReferenceInput = { full_name: "", relationship: "", email: "", phone: "", known_for: "" };
+const EMPTY: ReferenceInput = { full_name: "", reference_type: null, relationship: "", email: "", phone: "", known_for: "" };
 
 export function ReferencesEditor({
   initial,
@@ -130,7 +132,10 @@ function ReferenceRow({
   return (
     <li className="flex flex-wrap items-start gap-x-4 gap-y-2 px-4 py-3 text-sm">
       <div className="min-w-0 flex-1">
-        <p className="font-medium">{r.full_name}</p>
+        <p className="font-medium">
+          {r.full_name}
+          {r.reference_type && <span className="font-normal text-muted-foreground"> · {r.reference_type}</span>}
+        </p>
         <p className="text-muted-foreground">
           {r.relationship}, known for {r.known_for}
         </p>
@@ -223,6 +228,12 @@ function ReferenceForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Full name">
           {(id) => <TextInput id={id} value={r.full_name} onChange={set("full_name")} autoComplete="off" />}
+        </Field>
+        <Field label="Type of reference" hint={REFERENCE_TYPE_HINT}>
+          {(id, d) => (
+            <SelectInput id={id} describedBy={d} options={[...REFERENCE_TYPES]} value={r.reference_type}
+              onChange={(v) => setR({ ...r, reference_type: v as ReferenceInput["reference_type"] })} />
+          )}
         </Field>
         <Field label="How you know them" hint="For example, manager at a summer job">
           {(id, d) => <TextInput id={id} aria-describedby={d} value={r.relationship} onChange={set("relationship")} />}

@@ -54,7 +54,11 @@ async function ApplicationContent() {
         initial={draft}
         email={profile.email}
         references={references}
-        disclosuresSignedAt={{ bg: application.bg_disclosure_signed_at, ca: application.ca_disclosure_signed_at }}
+        disclosuresSignedAt={{
+          bg: application.bg_disclosure_signed_at,
+          ca: application.ca_disclosure_signed_at,
+          conduct: application.conduct_signed_at,
+        }}
       />
     </>
   );
