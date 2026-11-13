@@ -31,6 +31,22 @@ export const isMatched = cache(async (): Promise<boolean> => {
   return (count ?? 0) > 0;
 });
 
+/** Stages from which a Joey's Agreements page replaces their application (Clarify "Match Ready" and on). */
+export const AGREEMENT_STAGES = ["approved", "matched"];
+
+/** Agreements opens at Match Ready, or once matched. */
+export const agreementsUnlocked = cache(async (): Promise<boolean> => {
+  if (await isMatched()) return true;
+  const profile = await getProfile();
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("joey_applications")
+    .select("status, stage_key")
+    .eq("joey_id", profile.id)
+    .maybeSingle();
+  return data?.status === "submitted" && AGREEMENT_STAGES.includes(data.stage_key);
+});
+
 /** For pages that only make sense once a Joey has a Host (timecards, payments, settings). */
 export async function requireMatchedJoey() {
   if (!(await isMatched())) redirect("/joey/application");

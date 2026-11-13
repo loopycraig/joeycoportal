@@ -10,9 +10,23 @@ const STYLES: Record<TimecardStatus, { label: string; dot: string }> = {
 
 export function StatusPill({ status }: { status: TimecardStatus }) {
   const { label, dot } = STYLES[status];
+  return <Pill label={label} dot={dot} />;
+}
+
+const TONES = {
+  neutral: "bg-muted-foreground/60",
+  waiting: "bg-amber-400",
+  done: "bg-emerald-500",
+  stopped: "bg-red-500",
+} as const;
+
+export type PillTone = keyof typeof TONES;
+
+/** A label with a coloured dot. Use `tone` for anything that isn't a timecard. */
+export function Pill({ label, dot, tone = "neutral" }: { label: string; dot?: string; tone?: PillTone }) {
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
-      <span aria-hidden className={cn("size-2 rounded-full", dot)} />
+      <span aria-hidden className={cn("size-2 shrink-0 rounded-full", dot ?? TONES[tone])} />
       {label}
     </span>
   );
