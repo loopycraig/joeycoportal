@@ -204,7 +204,7 @@ export const SECTIONS: { id: SectionId; title: string; checklistLabel: string; k
     id: "acknowledgements",
     title: "Acknowledgements",
     checklistLabel: "Read and sign the background check disclosures and the Code of Conduct",
-    keys: ["bg_disclosure_signature", "ca_disclosure_signature", "conduct_signature", "news_opt_in"],
+    keys: ["bg_disclosure_signature", "ca_disclosure_signature", "conduct_signature"],
   },
 ];
 
@@ -223,7 +223,6 @@ export const MISSING_LABELS: Record<string, string> = {
   why_joey: "Why you want to be a Joey",
   heard_about: "How you heard about us",
   conduct_signature: "Your signature on the Code of Conduct",
-  news_opt_in: "Your choice about news and updates",
   bg_disclosure_signature: "Your signature on the background check disclosure",
   ca_disclosure_signature: "Your signature on the California disclosure",
   references: `At least ${MIN_REFERENCES} references`,
@@ -255,7 +254,6 @@ export function missingFields(a: ApplicationDraft, referenceCount: number): stri
   if (blank(a.why_joey)) out.push("why_joey");
   if (blank(a.heard_about)) out.push("heard_about");
   if (blank(a.conduct_signature)) out.push("conduct_signature");
-  if (a.news_opt_in === null) out.push("news_opt_in");
   if (referenceCount < MIN_REFERENCES) out.push("references");
   if (blank(a.bg_disclosure_signature)) out.push("bg_disclosure_signature");
   if (blank(a.ca_disclosure_signature)) out.push("ca_disclosure_signature");
