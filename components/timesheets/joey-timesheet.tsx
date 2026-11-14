@@ -47,6 +47,7 @@ const submittable = (e: TimeEntry, today: string) =>
 
 export function JoeyTimesheet({
   today,
+  initialWeek,
   windowStart,
   windowEnd,
   joeyId,
@@ -61,6 +62,8 @@ export function JoeyTimesheet({
   schedule,
 }: {
   today: string;
+  /** A week to open on (from a link), if it's in the loaded range. */
+  initialWeek?: string;
   windowStart: string;
   windowEnd: string;
   joeyId: string;
@@ -75,7 +78,9 @@ export function JoeyTimesheet({
   paySchedule: ScheduleInfo;
   schedule: ScheduledDay[] | null;
 }) {
-  const [week, setWeek] = useState(mondayOf(today));
+  const [week, setWeek] = useState(
+    initialWeek && initialWeek >= windowStart && initialWeek <= windowEnd ? initialWeek : mondayOf(today),
+  );
   const [editing, setEditing] = useState<{ entry: TimeEntry | null; date: string } | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

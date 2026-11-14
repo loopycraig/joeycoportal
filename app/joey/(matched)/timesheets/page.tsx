@@ -13,7 +13,7 @@ import {
   getToday,
 } from "@/lib/timesheets-server";
 
-type SearchParams = Promise<{ match?: string }>;
+type SearchParams = Promise<{ match?: string; week?: string }>;
 
 export default function JoeyTimesheetPage({ searchParams }: { searchParams: SearchParams }) {
   return (
@@ -28,7 +28,7 @@ const WEEKS_BACK = 16;
 const WEEKS_AHEAD = 8;
 
 async function TimesheetData({ searchParams }: { searchParams: SearchParams }) {
-  const [{ match: matchParam }, profile, supabase] = await Promise.all([searchParams, getProfile(), createClient()]);
+  const [{ match: matchParam, week: weekParam }, profile, supabase] = await Promise.all([searchParams, getProfile(), createClient()]);
   const today = await getToday(supabase);
 
   const { data: matchRows, error: matchError } = await supabase
@@ -74,6 +74,7 @@ async function TimesheetData({ searchParams }: { searchParams: SearchParams }) {
     <JoeyTimesheet
       key={match.id}
       today={today}
+      initialWeek={weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam) ? mondayOf(weekParam) : undefined}
       windowStart={from}
       windowEnd={to}
       joeyId={profile.id}

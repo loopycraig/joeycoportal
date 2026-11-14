@@ -1,21 +1,28 @@
 import { Suspense } from "react";
 import { getProfile } from "@/lib/profile";
 import { PageHeader, EmptyState } from "@/components/app-shell";
-import { getMatchesWithTerms, getStatements } from "@/lib/payments/queries";
+import { getMatchesWithTerms } from "@/lib/payments/queries";
 import { MatchTermsList } from "@/components/payments/match-terms";
-import { StatementList } from "@/components/payments/statement-list";
+import { PayPeriodList } from "@/components/payments/pay-periods";
+import { getPayPeriods } from "@/lib/payments/periods";
+import { RentPaymentList } from "@/components/payments/rent-payments";
+import { getRentPayments } from "@/lib/payments/rent";
 
 export default function JoeyPaymentsPage() {
   return (
     <>
       <PageHeader title="Payments" />
+      <SectionHeading>Pay by pay period</SectionHeading>
+      <Suspense>
+        <Periods />
+      </Suspense>
+      <SectionHeading>Rent</SectionHeading>
+      <Suspense>
+        <Rent />
+      </Suspense>
       <SectionHeading>Agreed terms</SectionHeading>
       <Suspense>
         <Terms />
-      </Suspense>
-      <SectionHeading>Statements</SectionHeading>
-      <Suspense>
-        <Statements />
       </Suspense>
     </>
   );
@@ -34,10 +41,22 @@ async function Terms() {
   return <MatchTermsList matches={matches} userId={profile.id} role="joey" />;
 }
 
-async function Statements() {
-  const statements = await getStatements();
-  if (statements.length === 0) {
-    return <EmptyState title="No statements yet">Your first pay period shows up here after a Host approves your hours.</EmptyState>;
+async function Periods() {
+  const { today, periods } = await getPayPeriods("joey");
+  if (periods.length === 0) {
+    return (
+      <EmptyState title="No pay periods yet">
+        Hours show up here by pay period once they&apos;re submitted, with when they&apos;re due and whether they&apos;re paid.
+      </EmptyState>
+    );
   }
-  return <StatementList statements={statements} />;
+  return <PayPeriodList periods={periods} role="joey" today={today} />;
+}
+
+async function Rent() {
+  const { today, payments } = await getRentPayments("joey");
+  if (payments.length === 0) {
+    return <EmptyState title="No rent due yet">Each month&apos;s rent you pay your Host shows up here, with when it&apos;s due under the housing license.</EmptyState>;
+  }
+  return <RentPaymentList payments={payments} role="joey" today={today} />;
 }

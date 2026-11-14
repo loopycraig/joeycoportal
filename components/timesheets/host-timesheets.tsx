@@ -4,23 +4,19 @@ import { createClient } from "@/lib/supabase/client";
 import { friendlyError } from "@/lib/errors";
 import {
   KIND_LABELS,
-  OT_MULTIPLIER,
   addDays,
   entryFlags,
   formatDay,
   formatHours,
-  formatMoney,
   formatRange,
   formatShort,
   formatTime,
-  rateOn,
   totalsFor,
   weekdayIndex,
   type EntrySplit,
   type Rate,
   type ScheduledDay,
   type TimeEntry,
-  type Totals,
 } from "@/lib/timesheets";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -28,7 +24,8 @@ import { Pill, StatusPill } from "@/components/status-pill";
 import { EmptyState, PageHeader, SectionHeader, textareaClass } from "@/components/page-parts";
 import { WeekTotals } from "@/components/timesheets/week-totals";
 import { cn } from "@/lib/utils";
-import { Check, Copy } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -39,7 +36,7 @@ export type HostPeriod = {
   periodStart: string;
   periodEnd: string;
   payday: string;
-  handedOffAt: string | null;
+  paidOn: string | null;
   entries: TimeEntry[];
   rates: Rate[];
   ptoBalance: number;
@@ -60,9 +57,9 @@ export function HostTimesheets({
 }) {
   const has = (p: HostPeriod, s: TimeEntry["status"]) => p.entries.some((e) => e.status === s);
   const review = periods.filter((p) => has(p, "submitted")).reverse();
-  const waiting = periods.filter((p) => !has(p, "submitted") && has(p, "changes_requested") && !p.handedOffAt);
-  const ready = periods.filter((p) => !has(p, "submitted") && !has(p, "changes_requested") && !p.handedOffAt);
-  const entered = periods.filter((p) => !has(p, "submitted") && p.handedOffAt).slice(0, 6);
+  const waiting = periods.filter((p) => !has(p, "submitted") && has(p, "changes_requested") && !p.paidOn);
+  const ready = periods.filter((p) => !has(p, "submitted") && !has(p, "changes_requested") && !p.paidOn);
+  const paid = periods.filter((p) => !has(p, "submitted") && p.paidOn).slice(0, 6);
 
   if (periods.length === 0) {
     return (
@@ -92,9 +89,9 @@ export function HostTimesheets({
         <p className="border-b px-4 py-4 text-sm text-muted-foreground sm:px-6">You&apos;re all caught up.</p>
       )}
       {section("Waiting for your approval", review)}
-      {section("Ready to enter in Poppins", ready)}
+      {section("Approved, not paid yet", ready)}
       {section("Waiting on your Joey", waiting)}
-      {section("Entered in Poppins", entered)}
+      {section("Paid", paid)}
     </>
   );
 }
@@ -114,7 +111,6 @@ function PeriodCard({
   const totals = totalsFor(counted, splitMap, p.rates);
   const approveBy = addDays(p.periodEnd, APPROVE_WITHIN_DAYS);
   const overdue = submitted.length > 0 && today > approveBy;
-  const over = p.periodEnd < today;
 
   const [selected, setSelected] = useState<string[]>([]);
   const [asking, setAsking] = useState(false);
@@ -141,7 +137,7 @@ function PeriodCard({
   const ptoUsedHere = submitted.filter((e) => e.kind === "pto" || e.kind === "sick").reduce((s, e) => s + Number(e.hours), 0);
 
   return (
-    <article className="border-b px-4 py-4 sm:px-6">
+    <article id={`period-${p.id}`} className="scroll-mt-4 border-b px-4 py-4 sm:px-6">
       <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h3 className="text-sm font-medium">{p.joeyName}</h3>
         <span className="text-sm text-muted-foreground">
@@ -153,8 +149,8 @@ function PeriodCard({
               tone={overdue ? "stopped" : "waiting"}
               label={overdue ? `Overdue · approve by ${formatShort(approveBy)}` : `Approve by ${formatShort(approveBy)}`}
             />
-          ) : p.handedOffAt ? (
-            <Pill tone="done" label={`Entered ${formatShort(p.handedOffAt.slice(0, 10))}`} />
+          ) : p.paidOn ? (
+            <Pill tone="done" label={`Paid ${formatShort(p.paidOn)}`} />
           ) : null}
         </span>
       </header>
@@ -199,7 +195,7 @@ function PeriodCard({
                   {e.notes && <span className="block truncate text-xs text-muted-foreground">{e.notes}</span>}
                   {(flags.length > 0 || e.late) && (
                     <span className="block text-xs text-amber-600 dark:text-amber-400">
-                      {[e.late ? "Submitted after its pay period was entered" : null, ...flags].filter(Boolean).join(" · ")}
+                      {[e.late ? "Submitted after its pay period was paid" : null, ...flags].filter(Boolean).join(" · ")}
                     </span>
                   )}
                   {e.status === "changes_requested" && e.review_note && (
@@ -289,101 +285,16 @@ function PeriodCard({
       </div>
 
       {submitted.length === 0 && !p.entries.some((e) => e.status === "changes_requested") && (
-        <PayrollHandoff
-          period={p}
-          totals={totals}
-          over={over}
-          pending={pending}
-          onToggle={(done) =>
-            act("handoff", () => createClient().rpc("set_pay_period_handed_off", { p_period: p.id, p_done: done }))
-          }
-        />
+        <div className="mt-2 flex justify-end">
+          <Link
+            href="/host/payments"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          >
+            {p.paidOn ? `Paid ${formatShort(p.paidOn)} · see Payments` : "Approved · pay and record it in Payments"}
+            <ArrowRight className="size-3.5" aria-hidden />
+          </Link>
+        </div>
       )}
     </article>
-  );
-}
-
-/** The numbers the Host types into Poppins, until there's an integration to send them. */
-function PayrollHandoff({
-  period: p,
-  totals,
-  over,
-  pending,
-  onToggle,
-}: {
-  period: HostPeriod;
-  totals: Totals;
-  over: boolean;
-  pending: string | null;
-  onToggle: (done: boolean) => void;
-}) {
-  const rate = rateOn(p.rates, p.periodEnd);
-  const lines: [string, number, string | null][] = [
-    ["Regular hours", totals.regular, rate ? `at ${formatMoney(rate)}/h` : null],
-    ["Overtime hours", totals.overtime, rate ? `at ${formatMoney(rate * OT_MULTIPLIER)}/h` : null],
-    ["PTO hours", totals.pto, null],
-    ["Sick hours", totals.sick, null],
-    ["Holiday hours", totals.holiday, null],
-  ];
-
-  if (p.handedOffAt) {
-    return (
-      <div className="mt-2 flex justify-end">
-        <Button size="sm" variant="ghost" disabled={pending !== null} onClick={() => onToggle(false)}>
-          {pending === "handoff" ? "Undoing…" : "Undo “entered in Poppins”"}
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-2 rounded-md border bg-muted/40 p-3">
-      <p className="text-sm font-medium">Enter in Poppins</p>
-      <p className="text-xs text-muted-foreground">
-        For the {formatShort(p.payday)} payday. Poppins needs hours before its cutoff, a few days before payday.
-      </p>
-      <dl className="mt-3 grid gap-1.5 text-sm">
-        {lines
-          .filter(([, h], i) => i < 2 || h > 0)
-          .map(([label, h, note]) => (
-            <div key={label} className="flex items-center gap-3">
-              <dt className="flex-1">
-                {label}
-                {note && <span className="ml-2 text-xs text-muted-foreground">{note}</span>}
-              </dt>
-              <dd className="tabular-nums">{Number(h.toFixed(2))}</dd>
-              <CopyButton value={String(Number(h.toFixed(2)))} label={label} />
-            </div>
-          ))}
-      </dl>
-      <div className="mt-3 flex items-center justify-end gap-3">
-        {!over && <span className="text-xs text-muted-foreground">You can mark this once the period ends.</span>}
-        <Button size="sm" disabled={pending !== null || !over} onClick={() => onToggle(true)}>
-          {pending === "handoff" ? "Saving…" : "Mark as entered in Poppins"}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function CopyButton({ value, label }: { value: string; label: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      type="button"
-      aria-label={`Copy ${label.toLowerCase()}`}
-      className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(value);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
-        } catch {
-          // Clipboard blocked: the number is right there to copy by hand.
-        }
-      }}
-    >
-      {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-    </button>
   );
 }

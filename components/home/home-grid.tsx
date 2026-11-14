@@ -1,28 +1,36 @@
-// Home: one card per area, each listing what needs doing there. Server-safe.
+// Home: one card per area, each a short list of rows in the same shape as that area's own page
+// (pay periods, agreements, people), with what needs doing first. Server-safe.
 
 import Link from "next/link";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Pill } from "@/components/status-pill";
+import { Pill, type PillTone } from "@/components/status-pill";
 
-export type HomeAction = {
+export type HomeRow = {
+  key: string;
+  /** What it is: a pay period, an agreement, a person. */
   label: string;
+  /** Who it's with, or other context. */
   detail?: string;
   href: string;
-  /** Past a deadline, or due today. */
-  urgent?: boolean;
+  /** Status, as the area's page words it. */
+  status?: string;
+  tone: PillTone;
+  /** A figure to line up on the right: hours or an amount. */
+  value?: string;
+  /** It's this person's turn. */
+  action?: boolean;
 };
 
 export type HomeCardData = {
   title: string;
   href: string;
-  /** Things this person has to do. */
-  actions: HomeAction[];
-  /** Useful facts, nothing to do. */
-  info: string[];
+  rows: HomeRow[];
+  /** Shown when there are no rows. */
+  empty: string;
 };
 
-const MAX_ACTIONS = 4;
+const MAX_ROWS = 5;
 
 export function HomeGrid({ cards }: { cards: HomeCardData[] }) {
   return (
@@ -35,10 +43,13 @@ export function HomeGrid({ cards }: { cards: HomeCardData[] }) {
 }
 
 function HomeCard({ card }: { card: HomeCardData }) {
-  const { title, href, actions, info } = card;
-  const urgent = actions.some((a) => a.urgent);
-  const shown = actions.slice(0, MAX_ACTIONS);
-  const more = actions.length - shown.length;
+  const { title, href, rows, empty } = card;
+  const todo = rows.filter((r) => r.action);
+  const urgent = todo.some((r) => r.tone === "stopped");
+  // To-dos first, then everything else in the order given.
+  const ordered = [...todo, ...rows.filter((r) => !r.action)];
+  const shown = ordered.slice(0, MAX_ROWS);
+  const more = ordered.length - shown.length;
 
   return (
     <section aria-labelledby={`home-${href}`} className="flex flex-col rounded-lg border bg-card">
@@ -48,34 +59,32 @@ function HomeCard({ card }: { card: HomeCardData }) {
             {title}
           </Link>
         </h2>
-        {actions.length > 0 ? (
-          <Pill tone={urgent ? "stopped" : "waiting"} label={`${actions.length} to do`} />
+        {todo.length > 0 ? (
+          <Pill tone={urgent ? "stopped" : "waiting"} label={`${todo.length} to do`} />
         ) : (
           <Pill tone="done" label="All caught up" />
         )}
       </header>
 
       <div className="flex flex-1 flex-col">
-        {shown.length > 0 && (
+        {shown.length === 0 ? (
+          <p className="px-4 py-3 text-sm text-muted-foreground">{empty}</p>
+        ) : (
           <ul className="divide-y border-b">
-            {shown.map((a) => (
-              <li key={a.label + a.href}>
+            {shown.map((r) => (
+              <li key={r.key}>
                 <Link
-                  href={a.href}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none"
+                  href={r.href}
+                  className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none"
                 >
-                  <span
-                    aria-hidden
-                    className={cn("size-2 shrink-0 rounded-full", a.urgent ? "bg-red-500" : "bg-amber-400")}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate">{a.label}</span>
-                    {a.detail && (
-                      <span className={cn("block truncate text-xs", a.urgent ? "text-red-500" : "text-muted-foreground")}>
-                        {a.detail}
-                      </span>
-                    )}
-                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className={cn("truncate text-sm", r.action && "font-medium")}>{r.label}</p>
+                    {r.detail && <p className="truncate text-xs text-muted-foreground">{r.detail}</p>}
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-0.5">
+                    {r.value && <span className="text-sm tabular-nums">{r.value}</span>}
+                    {r.status && <Pill label={r.status} tone={r.tone} />}
+                  </div>
                   <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 </Link>
               </li>
@@ -85,18 +94,6 @@ function HomeCard({ card }: { card: HomeCardData }) {
                 and {more} more in {title}
               </li>
             )}
-          </ul>
-        )}
-
-        {actions.length === 0 && info.length === 0 && (
-          <p className="px-4 py-3 text-xs text-muted-foreground">Nothing needs your attention.</p>
-        )}
-
-        {info.length > 0 && (
-          <ul className="space-y-1 px-4 py-3 text-xs text-muted-foreground">
-            {info.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
           </ul>
         )}
 
