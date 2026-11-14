@@ -143,7 +143,7 @@ function JoeyRow({ match }: { match: JoeyMatch }) {
   };
 
   return (
-    <li className="px-4 py-3 text-sm sm:px-6">
+    <li id={`joey-${match.id}`} className="scroll-mt-4 px-4 py-3 text-sm target:bg-accent/30 sm:px-6">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <span
           aria-hidden

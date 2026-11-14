@@ -5,7 +5,8 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { friendlyError } from "@/lib/errors";
-import type { PayPeriod, PayStatus } from "@/lib/payments/periods";
+import type { PayPeriod } from "@/lib/payments/periods";
+import { PAY_STATUS } from "@/lib/payments/pay-status";
 import {
   KIND_LABELS,
   OT_MULTIPLIER,
@@ -26,15 +27,8 @@ import { cn } from "@/lib/utils";
 import { ArrowRight, Check, ChevronDown, Copy } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-const STATUS: Record<PayStatus, { dot: string; host: string; joey: string }> = {
-  paid: { dot: "bg-emerald-500", host: "Paid", joey: "Paid" },
-  overdue: { dot: "bg-red-500", host: "Not paid, overdue", joey: "Not paid yet, past due" },
-  due: { dot: "bg-amber-400", host: "Not paid yet", joey: "Not paid yet" },
-  needs_approval: { dot: "bg-amber-400", host: "Needs your approval", joey: "Waiting for your Host to approve" },
-  changes_requested: { dot: "bg-red-500", host: "Waiting on your Joey", joey: "Your Host asked for changes" },
-};
 
 export function PayPeriodList({
   periods,
@@ -55,11 +49,19 @@ export function PayPeriodList({
 }
 
 function PayPeriodRow({ period: p, role, today }: { period: PayPeriod; role: "host" | "joey"; today: string }) {
-  const s = STATUS[p.status];
+  const s = PAY_STATUS[p.status];
   const amount = p.paid ? p.paid.amountCents : p.totals.grossCents;
+  const ref = useRef<HTMLDetailsElement>(null);
+  // Linked from Home as #pay-<id>: open it and bring it into view.
+  useEffect(() => {
+    if (window.location.hash === `#pay-${p.id}` && ref.current) {
+      ref.current.open = true;
+      ref.current.scrollIntoView({ block: "start" });
+    }
+  }, [p.id]);
   return (
-    <li>
-      <details className="group" open={role === "host" && (p.status === "overdue" || p.status === "due") && p.periodEnd < today}>
+    <li id={`pay-${p.id}`} className="scroll-mt-4">
+      <details ref={ref} className="group" open={role === "host" && (p.status === "overdue" || p.status === "due") && p.periodEnd < today}>
         <summary
           className={cn(
             "flex cursor-pointer list-none items-center gap-4 px-4 py-3 text-sm sm:px-6",

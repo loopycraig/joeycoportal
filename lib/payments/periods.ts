@@ -17,7 +17,8 @@ import {
 } from "@/lib/timesheets";
 import { getRates, getToday } from "@/lib/timesheets-server";
 
-export type PayStatus = "paid" | "overdue" | "due" | "needs_approval" | "changes_requested";
+import type { PayStatus } from "@/lib/payments/pay-status";
+export type { PayStatus };
 
 export type PayPeriod = {
   id: string;
