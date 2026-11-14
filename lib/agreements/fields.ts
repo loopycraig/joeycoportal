@@ -50,13 +50,25 @@ export const KIND_LABEL: Record<AgreementKind, string> = {
   offer_letter: "Employment Offer Letter",
   housing_license: "Housing License Agreement",
   host_services: "Host Services Agreement",
+  pay_amendment: "Pay Rate Amendment",
+  rent_amendment: "Rent Amendment",
+  pay_schedule_notice: "Pay Schedule Notice",
+  termination_notice: "Notice of End of Employment",
 };
+
+const NOTICES: AgreementKind[] = ["pay_schedule_notice", "termination_notice"];
+export const isNotice = (kind: AgreementKind) => NOTICES.includes(kind);
 
 export type Viewer = "host" | "joey";
 
 /** Status in words, from the viewer's side. */
 export function statusLabel(status: AgreementStatus, viewer: Viewer, kind: AgreementKind): string {
   if (kind === "host_services") return status === "executed" ? "Signed" : status === "void" ? "Withdrawn" : "Needs your signature";
+  if (isNotice(kind)) {
+    if (status === "executed") return "Acknowledged";
+    if (status === "void") return "Withdrawn";
+    return viewer === "joey" ? "Please acknowledge" : "Delivered";
+  }
   switch (status) {
     case "draft":
       return "Draft";
@@ -76,6 +88,7 @@ export function statusLabel(status: AgreementStatus, viewer: Viewer, kind: Agree
 /** Whether it's the viewer's turn. */
 export function needsAction(status: AgreementStatus, viewer: Viewer, kind: AgreementKind): boolean {
   if (kind === "host_services") return status === "draft";
+  if (isNotice(kind)) return viewer === "joey" && status === "sent";
   if (viewer === "joey") return status === "sent";
   return status === "draft" || status === "changes_requested" || status === "awaiting_countersign";
 }

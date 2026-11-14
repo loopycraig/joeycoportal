@@ -1,6 +1,13 @@
 // Shared by the agreement templates, the renderer, server actions and UI.
 
-export type AgreementKind = "offer_letter" | "housing_license" | "host_services";
+export type AgreementKind =
+  | "offer_letter"
+  | "housing_license"
+  | "host_services"
+  | "pay_amendment"
+  | "rent_amendment"
+  | "pay_schedule_notice"
+  | "termination_notice";
 export type AgreementStatus = "draft" | "sent" | "changes_requested" | "awaiting_countersign" | "executed" | "void";
 export type Party = "joey" | "host" | "joeyco";
 
@@ -29,7 +36,16 @@ export type ScheduleRow = { day: string; begin: string; end: string; resume: str
 export type FieldValue = string | number | boolean | ScheduleRow[] | null;
 export type Fields = Record<string, FieldValue>;
 
-export type Prefill = "today" | "host_name" | "joey_name" | "host_address" | "hourly_rate" | "monthly_rent" | "match_start";
+export type Prefill =
+  | "today"
+  | "host_name"
+  | "joey_name"
+  | "host_address"
+  | "hourly_rate"
+  | "monthly_rent"
+  | "match_start"
+  | "offer_date"
+  | "license_date";
 
 export type FieldDef = {
   key: string;

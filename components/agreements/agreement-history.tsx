@@ -12,13 +12,17 @@ const ACTION: Record<string, string> = {
   countersigned: "Countersigned",
   voided: "Withdrawn",
   executed: "Signed by everyone",
+  acknowledged: "Acknowledged by the Joey",
 };
 
 export function AgreementHistory({
   events,
   names,
+  notice,
 }: {
   events: AgreementEvent[];
+  /** Notices are delivered and acknowledged, not reviewed and signed. */
+  notice?: boolean;
   /** Actor id → name. */
   names: Record<string, string>;
 }) {
@@ -29,7 +33,7 @@ export function AgreementHistory({
           <span aria-hidden className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
           <div className="min-w-0">
             <p>
-              {ACTION[e.action] ?? e.action}
+              {(notice && e.action === "sent" ? "Delivered to the Joey" : ACTION[e.action]) ?? e.action}
               {e.version ? <span className="text-muted-foreground"> · version {e.version}</span> : null}
             </p>
             <p className="text-xs text-muted-foreground">

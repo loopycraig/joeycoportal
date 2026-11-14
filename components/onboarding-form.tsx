@@ -14,12 +14,12 @@ const ROLES: { value: Role; title: string; description: string }[] = [
   {
     value: "joey",
     title: "I'm a Joey",
-    description: "Log your hours and submit timecards to the Hosts you work with.",
+    description: "Log your hours each week and submit them to your Host.",
   },
   {
     value: "host",
     title: "I'm a Host",
-    description: "Add your Joeys and approve the timecards they submit.",
+    description: "Add your Joeys and approve the hours they submit.",
   },
 ];
 

@@ -14,7 +14,7 @@ type MatchRow = {
 export default function JoeyHostsPage() {
   return (
     <>
-      <PageHeader title="Hosts" />
+      <PageHeader title="My Host" />
       <Suspense>
         <HostList />
       </Suspense>

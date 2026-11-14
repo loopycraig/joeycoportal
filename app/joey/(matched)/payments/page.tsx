@@ -31,7 +31,7 @@ async function Terms() {
   if (matches.length === 0) {
     return <EmptyState title="You're not matched with a Host yet" />;
   }
-  return <MatchTermsList matches={matches} userId={profile.id} />;
+  return <MatchTermsList matches={matches} userId={profile.id} role="joey" />;
 }
 
 async function Statements() {

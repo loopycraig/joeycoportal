@@ -4,33 +4,42 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-import { formatCents, formatDate, parseDollarsToCents, todayIn } from "@/lib/money";
+import { formatCents, formatDate, todayIn } from "@/lib/money";
 import type { MatchWithTerms, Terms } from "@/lib/payments/queries";
+import { NewAgreementButton } from "@/components/agreements/new-agreement";
 
 const TZ = "America/Denver";
 
-export function MatchTermsList({ matches, userId }: { matches: MatchWithTerms[]; userId: string }) {
+export function MatchTermsList({
+  matches,
+  userId,
+  role,
+}: {
+  matches: MatchWithTerms[];
+  userId: string;
+  role: "host" | "joey";
+}) {
   return (
     <ul className="divide-y">
       {matches.map((m) => (
-        <MatchTermsRow key={m.id} match={m} userId={userId} />
+        <MatchTermsRow key={m.id} match={m} userId={userId} role={role} />
       ))}
     </ul>
   );
 }
 
 function summarize(t: Terms) {
-  return `${formatCents(t.hourly_rate_cents)}/hr and ${formatCents(t.monthly_rent_cents)}/mo rent`;
+  const rate = t.hourly_rate_cents === null ? "no hourly rate yet" : `${formatCents(t.hourly_rate_cents)}/hr`;
+  const rent = t.monthly_rent_cents === null ? "no rent yet" : `${formatCents(t.monthly_rent_cents)}/mo rent`;
+  return `${rate} and ${rent}`;
 }
 
-function MatchTermsRow({ match, userId }: { match: MatchWithTerms; userId: string }) {
+// Rate and rent changes are signed amendments now (Agreements). Proposals made before that can
+// still be answered or withdrawn here.
+function MatchTermsRow({ match, userId, role }: { match: MatchWithTerms; userId: string; role: "host" | "joey" }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
 
   const today = todayIn(TZ);
   const accepted = match.terms
@@ -52,7 +61,6 @@ function MatchTermsRow({ match, userId }: { match: MatchWithTerms; userId: strin
         setError(error.message);
         return;
       }
-      setFormOpen(false);
       router.refresh();
     });
   };
@@ -72,7 +80,9 @@ function MatchTermsRow({ match, userId }: { match: MatchWithTerms; userId: strin
               {summarize(current)}, since {formatDate(current.effective_date)}
             </p>
           ) : (
-            <p className="text-amber-500">No agreed rate or rent yet. Hours can&apos;t be paid until you agree on terms.</p>
+            <p className="text-amber-500">
+              No agreed rate or rent yet. They come from the signed offer letter and housing license.
+            </p>
           )}
           {upcoming.map((t) => (
             <p key={t.id} className="text-muted-foreground">
@@ -80,10 +90,23 @@ function MatchTermsRow({ match, userId }: { match: MatchWithTerms; userId: strin
             </p>
           ))}
         </div>
-        {!formOpen && (
-          <Button variant="outline" size="sm" onClick={() => setFormOpen(true)} disabled={pending}>
-            {proposal ? "Propose different terms" : current ? "Propose a change" : "Propose terms"}
-          </Button>
+        {role === "host" && current && (
+          <div className="flex gap-2">
+            <NewAgreementButton
+              matches={[{ id: match.id, name }]}
+              initialMatch={match.id}
+              initialKind="pay_amendment"
+              label="Change hourly rate"
+              variant="outline"
+            />
+            <NewAgreementButton
+              matches={[{ id: match.id, name }]}
+              initialMatch={match.id}
+              initialKind="rent_amendment"
+              label="Change rent"
+              variant="outline"
+            />
+          </div>
         )}
       </div>
 
@@ -116,31 +139,6 @@ function MatchTermsRow({ match, userId }: { match: MatchWithTerms; userId: strin
         </div>
       )}
 
-      {formOpen && (
-        <ProposeForm
-          defaults={current ?? upcoming.at(-1) ?? null}
-          minDate={today}
-          pending={pending}
-          onCancel={() => {
-            setFormOpen(false);
-            setError(null);
-          }}
-          onSubmit={(v) =>
-            run(() =>
-              supabase.rpc("propose_terms", {
-                p_match_id: match.id,
-                p_effective_date: v.effectiveDate,
-                p_hourly_rate_cents: v.hourly,
-                p_monthly_rent_cents: v.rent,
-                p_note: v.note,
-              }),
-            )
-          }
-          onInvalid={setError}
-          replacing={!!proposal}
-        />
-      )}
-
       {error && <p className="mt-2 text-red-500">{error}</p>}
 
       {past.length > 0 && (
@@ -156,72 +154,5 @@ function MatchTermsRow({ match, userId }: { match: MatchWithTerms; userId: strin
         </details>
       )}
     </li>
-  );
-}
-
-function ProposeForm({
-  defaults,
-  minDate,
-  pending,
-  replacing,
-  onSubmit,
-  onCancel,
-  onInvalid,
-}: {
-  defaults: Terms | null;
-  minDate: string;
-  pending: boolean;
-  replacing: boolean;
-  onSubmit: (v: { effectiveDate: string; hourly: number; rent: number; note: string }) => void;
-  onCancel: () => void;
-  onInvalid: (msg: string) => void;
-}) {
-  const [effectiveDate, setEffectiveDate] = useState(minDate);
-  const [hourly, setHourly] = useState(defaults ? (defaults.hourly_rate_cents / 100).toFixed(2) : "");
-  const [rent, setRent] = useState(defaults ? (defaults.monthly_rent_cents / 100).toFixed(2) : "");
-  const [note, setNote] = useState("");
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const h = parseDollarsToCents(hourly);
-    const r = parseDollarsToCents(rent);
-    if (h === null) return onInvalid("Enter the hourly rate as a dollar amount, like 25 or 25.50.");
-    if (r === null) return onInvalid("Enter the monthly rent as a dollar amount, like 900.");
-    if (!effectiveDate) return onInvalid("Choose the date these terms start.");
-    onSubmit({ effectiveDate, hourly: h, rent: r, note });
-  };
-
-  const field = "h-8 text-sm";
-
-  return (
-    <form onSubmit={submit} className="mt-3 grid gap-3 rounded-md border px-3 py-3 sm:grid-cols-3">
-      <div className="grid gap-1">
-        <Label htmlFor="hourly" className="text-xs text-muted-foreground">Hourly rate</Label>
-        <Input id="hourly" inputMode="decimal" placeholder="25.00" value={hourly} onChange={(e) => setHourly(e.target.value)} className={field} />
-      </div>
-      <div className="grid gap-1">
-        <Label htmlFor="rent" className="text-xs text-muted-foreground">Monthly rent</Label>
-        <Input id="rent" inputMode="decimal" placeholder="900.00" value={rent} onChange={(e) => setRent(e.target.value)} className={field} />
-      </div>
-      <div className="grid gap-1">
-        <Label htmlFor="effective" className="text-xs text-muted-foreground">Starts on</Label>
-        <Input id="effective" type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} className={field} />
-      </div>
-      <div className="grid gap-1 sm:col-span-3">
-        <Label htmlFor="note" className="text-xs text-muted-foreground">Note (optional)</Label>
-        <Input id="note" placeholder="What changed and why" value={note} onChange={(e) => setNote(e.target.value)} className={field} />
-      </div>
-      <div className={cn("flex items-center gap-2 sm:col-span-3")}>
-        <Button type="submit" size="sm" disabled={pending}>
-          {pending ? "Sending…" : "Send proposal"}
-        </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
-          Cancel
-        </Button>
-        <span className="text-xs text-muted-foreground">
-          {replacing ? "This replaces the open proposal. " : ""}Takes effect once the other person accepts.
-        </span>
-      </div>
-    </form>
   );
 }
