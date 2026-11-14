@@ -9,9 +9,10 @@ import { AgreementDocument } from "@/components/agreements/agreement-document";
 import { AgreementEditor } from "@/components/agreements/agreement-editor";
 import { AgreementHistory } from "@/components/agreements/agreement-history";
 import { ReviewPanel } from "@/components/agreements/review-panel";
+import { AcknowledgePanel } from "@/components/agreements/acknowledge-panel";
 import type { ListItem } from "@/components/agreements/agreement-list";
 import { getAgreement, hasEsignConsent, personLabel, type AgreementSummary } from "@/lib/agreements/queries";
-import { KIND_LABEL, needsAction, statusLabel, type Viewer } from "@/lib/agreements/fields";
+import { KIND_LABEL, isNotice, needsAction, statusLabel, type Viewer } from "@/lib/agreements/fields";
 import type { AgreementStatus } from "@/lib/agreements/types";
 
 export function toneOf(status: AgreementStatus, mine: boolean): PillTone {
@@ -49,12 +50,15 @@ export async function AgreementView({ id, viewer, profileId }: { id: string; vie
   const sigs = a.signatures.filter((s) => s.version === a.current_version);
   const mine = needsAction(a.status, viewer, a.kind);
 
+  const notice = isNotice(a.kind);
   const hostEditing =
     viewer === "host" &&
     profileId === a.host_id &&
+    !notice &&
     (a.kind === "host_services" ? a.status === "draft" : ["draft", "sent", "changes_requested"].includes(a.status));
   const reviewing =
-    (viewer === "joey" && a.status === "sent") || (viewer === "host" && a.status === "awaiting_countersign");
+    !notice && ((viewer === "joey" && a.status === "sent") || (viewer === "host" && a.status === "awaiting_countersign"));
+  const acknowledging = notice && viewer === "joey" && a.status === "sent";
   const lastRequest = [...a.events].reverse().find((e) => e.action === "changes_requested");
 
   // On wide screens the view is exactly window-height and each panel scrolls on its own.
@@ -135,6 +139,12 @@ export async function AgreementView({ id, viewer, profileId }: { id: string; vie
                 hasConsent={consent}
               />
             )}
+            {acknowledging && <AcknowledgePanel id={a.id} />}
+            {notice && viewer === "host" && a.status === "sent" && (
+              <p className="rounded-lg border p-4 text-sm text-muted-foreground">
+                {joeyName} has this notice in their Agreements. It shows as acknowledged once they confirm they&apos;ve received it.
+              </p>
+            )}
             {viewer === "joey" && a.status === "changes_requested" && (
               <p className="rounded-lg border p-4 text-sm text-muted-foreground">
                 You asked for changes. Your Host will send a new version to review.
@@ -142,7 +152,7 @@ export async function AgreementView({ id, viewer, profileId }: { id: string; vie
             )}
             <section className="space-y-3">
               <h3 className="text-sm font-medium">History</h3>
-              <AgreementHistory events={a.events} names={actorNames} />
+              <AgreementHistory events={a.events} names={actorNames} notice={notice} />
               <p className="break-all pt-2 text-[11px] text-muted-foreground">
                 Version {current.version} fingerprint (SHA-256): {current.content_hash}
               </p>

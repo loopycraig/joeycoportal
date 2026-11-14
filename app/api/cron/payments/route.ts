@@ -17,8 +17,12 @@ export async function GET(request: Request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 
-  // 2. Send payments from runs JoeyCo has approved
+  // 2. Matches past their last day of work or move-out date (PTO payout, then closing the match)
+  const { data: closed, error: endError } = await admin.rpc("finalize_match_ends");
+  if (endError) console.error("[payments] finalizing match ends failed", endError);
+
+  // 3. Send payments from runs JoeyCo has approved
   const processed = await processDuePayments(admin);
 
-  return Response.json({ createdRuns: created ?? [], ...processed });
+  return Response.json({ createdRuns: created ?? [], closedMatches: closed ?? 0, ...processed });
 }

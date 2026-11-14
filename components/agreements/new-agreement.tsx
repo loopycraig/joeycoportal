@@ -11,11 +11,28 @@ import { KIND_LABEL } from "@/lib/agreements/fields";
 import { JOEY_AGREEMENT_KINDS } from "@/lib/agreements/templates";
 import type { AgreementKind } from "@/lib/agreements/types";
 
-export function NewAgreementButton({ matches }: { matches: { id: string; name: string }[] }) {
+const HINTS: Partial<Record<AgreementKind, string>> = {
+  pay_amendment: "Change the hourly rate in a signed offer letter",
+  rent_amendment: "Change the rent in a signed housing license",
+};
+
+export function NewAgreementButton({
+  matches,
+  initialKind = "offer_letter",
+  initialMatch,
+  label = "New agreement",
+  variant,
+}: {
+  matches: { id: string; name: string }[];
+  initialKind?: AgreementKind;
+  initialMatch?: string;
+  label?: string;
+  variant?: "outline";
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [matchId, setMatchId] = useState(matches[0]?.id ?? "");
-  const [kind, setKind] = useState<AgreementKind>("offer_letter");
+  const [matchId, setMatchId] = useState(initialMatch ?? matches[0]?.id ?? "");
+  const [kind, setKind] = useState<AgreementKind>(initialKind);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,9 +47,15 @@ export function NewAgreementButton({ matches }: { matches: { id: string; name: s
 
   return (
     <>
-      <Button size="sm" onClick={() => setOpen(true)} disabled={matches.length === 0} title={matches.length === 0 ? "Add a Joey first" : undefined}>
-        <Plus />
-        New agreement
+      <Button
+        size="sm"
+        variant={variant}
+        onClick={() => setOpen(true)}
+        disabled={matches.length === 0}
+        title={matches.length === 0 ? "Add a Joey first" : undefined}
+      >
+        {!variant && <Plus />}
+        {label}
       </Button>
       <Modal open={open} onClose={() => setOpen(false)} title="New agreement">
         <div className="space-y-4 text-sm">
@@ -49,9 +72,12 @@ export function NewAgreementButton({ matches }: { matches: { id: string; name: s
           <fieldset className="space-y-2">
             <legend className="mb-1.5 font-medium">Agreement</legend>
             {JOEY_AGREEMENT_KINDS.map((k) => (
-              <label key={k} className="flex items-center gap-2.5">
-                <input type="radio" name="kind" checked={kind === k} onChange={() => setKind(k)} className="size-4 accent-foreground" />
-                {KIND_LABEL[k]}
+              <label key={k} className="flex items-start gap-2.5">
+                <input type="radio" name="kind" checked={kind === k} onChange={() => setKind(k)} className="mt-0.5 size-4 accent-foreground" />
+                <span>
+                  {KIND_LABEL[k]}
+                  {HINTS[k] && <span className="block text-xs text-muted-foreground">{HINTS[k]}</span>}
+                </span>
               </label>
             ))}
           </fieldset>

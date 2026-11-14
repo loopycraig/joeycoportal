@@ -23,7 +23,7 @@ async function HostAgreements() {
       <PageHeader title="Agreements" actions={<NewAgreementButton matches={matches} />} />
       <p className="border-b px-4 py-3 text-sm text-muted-foreground sm:px-6">
         Fill in and send each Joey their Employment Offer Letter and Housing License Agreement. They review, ask for changes or
-        sign, and then you sign to put it in effect.
+        sign, and then you sign to put it in effect. To change a Joey&apos;s hourly rate or rent later, send an amendment.
       </p>
       <AgreementList items={agreements.map((a) => toListItem(a, "host"))} />
     </>
