@@ -240,13 +240,29 @@ export function splitEntries(entries: SplitInput[]): Map<string, EntrySplit> {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/** The hourly rate in force on a date (rows without a rate are skipped). */
 export function rateOn(rates: Rate[], date: string): number | null {
-  let best: Rate | null = null;
-  for (const r of rates) {
-    if (r.effective_date <= date && (!best || r.effective_date > best.effective_date)) best = r;
-  }
-  return best?.hourly_rate_cents ?? null;
+  return rateFor(rates, date)?.cents ?? null;
 }
+
+/**
+ * The rate for a day. Days before the first agreed rate (say, hours worked before the offer
+ * letter's start date) use that first rate, marked `assumed` so the estimate can say so.
+ */
+export function rateFor(rates: Rate[], date: string): { cents: number; assumed: boolean } | null {
+  const known = rates
+    .filter((r): r is Rate & { hourly_rate_cents: number } => r.hourly_rate_cents !== null)
+    .sort((a, b) => a.effective_date.localeCompare(b.effective_date));
+  if (known.length === 0) return null;
+  const inForce = known.filter((r) => r.effective_date <= date).at(-1);
+  return inForce ? { cents: inForce.hourly_rate_cents, assumed: false } : { cents: known[0].hourly_rate_cents, assumed: true };
+}
+
+const firstRateDate = (rates: Rate[]) =>
+  rates
+    .filter((r) => r.hourly_rate_cents !== null)
+    .map((r) => r.effective_date)
+    .sort()[0] ?? null;
 
 export type Totals = {
   regular: number;
@@ -256,15 +272,18 @@ export type Totals = {
   holiday: number;
   grossCents: number;
   missingRate: boolean;
+  /** Some days are before the first agreed rate and were estimated at it. */
+  assumedRateFrom: string | null;
 };
 
 /** Hours by type and estimated gross pay for a set of entries (split from their full weeks). */
 export function totalsFor(entries: SplitInput[], splits: Map<string, EntrySplit>, rates: Rate[]): Totals {
-  const t: Totals = { regular: 0, overtime: 0, pto: 0, sick: 0, holiday: 0, grossCents: 0, missingRate: false };
+  const t: Totals = { regular: 0, overtime: 0, pto: 0, sick: 0, holiday: 0, grossCents: 0, missingRate: false, assumedRateFrom: null };
   for (const e of entries) {
-    const rate = rateOn(rates, e.work_date);
+    const rate = rateFor(rates, e.work_date);
     if (rate === null) t.missingRate = true;
-    const r = rate ?? 0;
+    else if (rate.assumed) t.assumedRateFrom = firstRateDate(rates);
+    const r = rate?.cents ?? 0;
     const h = Number(e.hours);
     if (e.kind === "work") {
       const s = splits.get(e.id) ?? { regular: h, overtime: 0 };
