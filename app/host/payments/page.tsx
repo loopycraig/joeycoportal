@@ -6,6 +6,8 @@ import { MatchTermsList } from "@/components/payments/match-terms";
 import { StatementList } from "@/components/payments/statement-list";
 import { PayPeriodList } from "@/components/payments/pay-periods";
 import { getPayPeriods } from "@/lib/payments/periods";
+import { RentPaymentList } from "@/components/payments/rent-payments";
+import { getRentPayments } from "@/lib/payments/rent";
 
 export default function HostPaymentsPage() {
   return (
@@ -15,11 +17,15 @@ export default function HostPaymentsPage() {
       <Suspense>
         <Periods />
       </Suspense>
+      <SectionHeading>Rent</SectionHeading>
+      <Suspense>
+        <Rent />
+      </Suspense>
       <SectionHeading>Agreed terms</SectionHeading>
       <Suspense>
         <Terms />
       </Suspense>
-      <SectionHeading>JoeyCo statements (rent and fees)</SectionHeading>
+      <SectionHeading>JoeyCo statements (fees)</SectionHeading>
       <Suspense>
         <Statements />
       </Suspense>
@@ -43,7 +49,7 @@ async function Terms() {
 async function Statements() {
   const statements = await getStatements();
   if (statements.length === 0) {
-    return <EmptyState title="No statements yet">Your monthly rent and fee statements show up here once billing starts.</EmptyState>;
+    return <EmptyState title="No statements yet">Your monthly JoeyCo fee statements show up here once billing starts. Rent is between you and your Joey, under Rent above.</EmptyState>;
   }
   return <StatementList statements={statements} />;
 }
@@ -58,4 +64,12 @@ async function Periods() {
     );
   }
   return <PayPeriodList periods={periods} role="host" today={today} />;
+}
+
+async function Rent() {
+  const { today, payments } = await getRentPayments("host");
+  if (payments.length === 0) {
+    return <EmptyState title="No rent due yet">Each month&apos;s rent from your Joey shows up here, with when it&apos;s due under the housing license.</EmptyState>;
+  }
+  return <RentPaymentList payments={payments} role="host" today={today} />;
 }

@@ -7,6 +7,8 @@ import { listMyAgreements } from "@/lib/agreements/queries";
 import { toListItem } from "@/components/agreements/agreement-view";
 import { getStatements } from "@/lib/payments/queries";
 import { getPayPeriods, type PayPeriod } from "@/lib/payments/periods";
+import { getRentPayments, type RentPayment } from "@/lib/payments/rent";
+import { RENT_STATUS, monthName } from "@/lib/payments/rent-status";
 import { personName, type Person } from "@/lib/people";
 import {
   SCHEDULE_LABELS,
@@ -97,7 +99,35 @@ function paymentRows(periods: PayPeriod[], role: Role, today: string): HomeRow[]
   });
 }
 
-/** JoeyCo's next rent-and-fees statement, if one is coming. */
+/**
+ * Rent: every month not yet received, then the most recent received one. Same rows as Rent on
+ * Payments. The Joey's to-do once it's due soon; the Host's once it's due (to mark it received).
+ */
+function rentRows(payments: RentPayment[], role: Role, today: string): HomeRow[] {
+  const open = payments.filter((p) => !p.receivedOn).sort((a, b) => a.dueOn.localeCompare(b.dueOn));
+  const received = payments.filter((p) => p.receivedOn).slice(0, 1);
+  return [...open, ...received].map((p) => {
+    const s = RENT_STATUS[p.status];
+    return {
+      key: `rent-${p.key}`,
+      label: `${monthName(p.month)} rent`,
+      detail: `${role === "host" ? "From" : "To"} ${p.otherName}`,
+      href: `/${role}/payments#rent-${p.key}`,
+      status: p.receivedOn
+        ? `${role === "host" ? "Received" : "Paid"} ${formatShort(p.receivedOn)}`
+        : p.status === "late"
+          ? `Late, due ${formatShort(p.dueOn)}`
+          : p.status === "overdue"
+            ? `Overdue, due ${formatShort(p.dueOn)}`
+            : `Due ${formatShort(p.dueOn)}`,
+      tone: s.tone,
+      value: formatMoney(p.amountCents),
+      action: !p.receivedOn && (role === "joey" ? p.status !== "upcoming" : p.dueOn <= today),
+    };
+  });
+}
+
+/** JoeyCo's next fee statement, if one is coming. */
 async function statementRow(role: Role, today: string): Promise<HomeRow | null> {
   const next = (await getStatements())
     .filter((s) => s.payment && s.payment.status === "pending" && s.pay_date >= today)
@@ -106,7 +136,7 @@ async function statementRow(role: Role, today: string): Promise<HomeRow | null> 
   return {
     key: `statement-${next.id}`,
     label: "JoeyCo statement",
-    detail: `Rent and fees, ${formatRange(next.period_start, next.period_end)}`,
+    detail: `Fees, ${formatRange(next.period_start, next.period_end)}`,
     href: `/${role}/payments`,
     status: `${next.payment.direction === "charge" ? "Charged" : "Paid out"} ${formatShort(next.pay_date)}`,
     tone: "neutral",
@@ -162,8 +192,9 @@ export async function getHostHome(): Promise<HomeCardData[]> {
   const ids = matches.map((m) => m.id);
   const nameOf = (id: string) => personName(matches.find((m) => m.id === id)?.other);
 
-  const [{ periods }, terms, agreements, statement, schedules] = await Promise.all([
+  const [{ periods }, { payments: rent }, terms, agreements, statement, schedules] = await Promise.all([
     getPayPeriods("host"),
+    getRentPayments("host"),
     ids.length
       ? supabase
           .from("match_terms")
@@ -199,7 +230,11 @@ export async function getHostHome(): Promise<HomeCardData[]> {
     });
 
   // Payments
-  const pay = [...proposalRows(termRows, profile.id, nameOf, "host"), ...paymentRows(periods, "host", today)];
+  const pay = [
+    ...proposalRows(termRows, profile.id, nameOf, "host"),
+    ...rentRows(rent, "host", today),
+    ...paymentRows(periods, "host", today),
+  ];
   if (statement) pay.push(statement);
 
   // My Joeys: one row each, as on My Joeys.
@@ -284,7 +319,7 @@ export async function getJoeyHome(): Promise<HomeCardData[]> {
   const hostName = personName(match.other);
   const from = addDays(mondayOf(today), -63);
   const to = addDays(today, 60);
-  const [entries, spansData, { periods }, balances, terms, schedules, statement] = await Promise.all([
+  const [entries, spansData, { periods }, { payments: rent }, balances, terms, schedules] = await Promise.all([
     supabase
       .from("time_entries")
       .select("id, work_date, kind, hours, status")
@@ -293,6 +328,7 @@ export async function getJoeyHome(): Promise<HomeCardData[]> {
       .lte("work_date", to),
     supabase.rpc("pay_periods_between", { p_match: match.id, p_from: from, p_to: to }),
     getPayPeriods("joey"),
+    getRentPayments("joey"),
     getPtoBalances(supabase, [match.id]),
     supabase
       .from("match_terms")
@@ -300,7 +336,6 @@ export async function getJoeyHome(): Promise<HomeCardData[]> {
       .eq("match_id", match.id)
       .in("status", ["accepted", "proposed"]),
     getPaySchedules(supabase, [match.id], today),
-    statementRow("joey", today),
   ]);
   if (entries.error) throw new Error(entries.error.message);
   if (spansData.error) throw new Error(spansData.error.message);
@@ -369,9 +404,12 @@ export async function getJoeyHome(): Promise<HomeCardData[]> {
     });
   }
 
-  // Payments
-  const pay = [...proposalRows(termRows, profile.id, () => hostName, "joey"), ...paymentRows(periods, "joey", today)];
-  if (statement) pay.push(statement);
+  // Payments: rent the Joey pays directly, and their pay. JoeyCo's fee statements are the Host's.
+  const pay = [
+    ...proposalRows(termRows, profile.id, () => hostName, "joey"),
+    ...rentRows(rent, "joey", today),
+    ...paymentRows(periods, "joey", today),
+  ];
 
   // My Host
   const ending = match.employment_ends_on && match.housing_ends_on;
