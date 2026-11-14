@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Download, Printer } from "lucide-react";
 import { PageHeader } from "@/components/page-parts";
 import { Pill, type PillTone } from "@/components/status-pill";
 import { AgreementDocument } from "@/components/agreements/agreement-document";
@@ -71,6 +71,13 @@ export async function AgreementView({ id, viewer, profileId }: { id: string; vie
                 <Printer className="size-3.5" aria-hidden />
                 Printable copy
               </Link>
+            )}
+            {a.status === "executed" && (
+              // A plain link: the route sends the file as a download.
+              <a href={`/agreements/${a.id}/pdf`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                <Download className="size-3.5" aria-hidden />
+                Download PDF
+              </a>
             )}
           </div>
         }
