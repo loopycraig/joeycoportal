@@ -17,7 +17,9 @@ export const getProfile = cache(async (): Promise<Profile> => {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  // No valid session. /auth/signout clears any stale cookies first, so the proxy doesn't send
+  // them straight back here from the login page.
+  if (!user) redirect("/auth/signout");
 
   const { data: profile } = await supabase
     .from("profiles")

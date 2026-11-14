@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Download, Printer } from "lucide-react";
 import { PageHeader } from "@/components/page-parts";
 import { Pill, type PillTone } from "@/components/status-pill";
 import { AgreementDocument } from "@/components/agreements/agreement-document";
@@ -57,10 +57,12 @@ export async function AgreementView({ id, viewer, profileId }: { id: string; vie
     (viewer === "joey" && a.status === "sent") || (viewer === "host" && a.status === "awaiting_countersign");
   const lastRequest = [...a.events].reverse().find((e) => e.action === "changes_requested");
 
+  // On wide screens the view is exactly window-height and each panel scrolls on its own.
   return (
-    <>
+    <div className="flex flex-col lg:h-svh lg:overflow-hidden">
       <PageHeader
         title={KIND_LABEL[a.kind]}
+        className="shrink-0"
         actions={
           <div className="flex items-center gap-3">
             <Pill label={statusLabel(a.status, viewer, a.kind)} tone={toneOf(a.status, mine)} />
@@ -70,10 +72,17 @@ export async function AgreementView({ id, viewer, profileId }: { id: string; vie
                 Printable copy
               </Link>
             )}
+            {a.status === "executed" && (
+              // A plain link: the route sends the file as a download.
+              <a href={`/agreements/${a.id}/pdf`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                <Download className="size-3.5" aria-hidden />
+                Download PDF
+              </a>
+            )}
           </div>
         }
       />
-      <div className="border-b px-4 py-2 sm:px-6">
+      <div className="shrink-0 border-b px-4 py-2 sm:px-6">
         <Link href={base} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-3.5" aria-hidden />
           All agreements
@@ -87,7 +96,7 @@ export async function AgreementView({ id, viewer, profileId }: { id: string; vie
       </div>
 
       {viewer === "host" && a.status === "changes_requested" && lastRequest?.comment && (
-        <div className="border-b bg-amber-50 px-4 py-3 text-sm dark:bg-amber-400/10 sm:px-6">
+        <div className="max-h-40 shrink-0 overflow-y-auto border-b bg-amber-50 px-4 py-3 text-sm dark:bg-amber-400/10 sm:px-6">
           <p className="font-medium">{joeyName} asked for changes</p>
           <p className="mt-1 whitespace-pre-wrap">{lastRequest.comment}</p>
         </div>
@@ -104,8 +113,8 @@ export async function AgreementView({ id, viewer, profileId }: { id: string; vie
           hostName={hostName}
         />
       ) : current ? (
-        <div className="grid gap-8 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="min-w-0">
+        <div className="grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[minmax(0,1fr)]">
+          <div className="min-w-0 px-4 py-6 sm:px-6 lg:overflow-y-auto">
             {current.note && (
               <div className="mb-6 rounded-md bg-muted/50 px-3 py-2 text-sm">
                 <p className="text-xs font-medium text-muted-foreground">What changed in version {current.version}</p>
@@ -114,7 +123,7 @@ export async function AgreementView({ id, viewer, profileId }: { id: string; vie
             )}
             <AgreementDocument blocks={current.rendered} signatures={sigs} names={names} highlight={a.status !== "executed"} className="max-w-2xl" />
           </div>
-          <aside className="space-y-6">
+          <aside className="space-y-6 border-t px-4 py-6 sm:px-6 lg:overflow-y-auto lg:border-l lg:border-t-0">
             {reviewing && (
               <ReviewPanel
                 id={a.id}
@@ -143,6 +152,6 @@ export async function AgreementView({ id, viewer, profileId }: { id: string; vie
       ) : (
         <p className="px-6 py-10 text-sm text-muted-foreground">This agreement hasn&apos;t been sent yet.</p>
       )}
-    </>
+    </div>
   );
 }

@@ -41,7 +41,17 @@ async function Copy({ params }: { params: Promise<{ id: string }> }) {
             Version {v.version} · {a.status === "executed" && a.executed_at ? `Signed by everyone ${stamp(a.executed_at)}` : "Not fully signed yet"}
           </p>
         </div>
-        <PrintButton />
+        <div className="flex gap-2">
+          {a.status === "executed" && (
+            <a
+              href={`/agreements/${a.id}/pdf`}
+              className="inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium shadow-sm hover:bg-accent"
+            >
+              Download PDF
+            </a>
+          )}
+          <PrintButton />
+        </div>
       </div>
 
       <AgreementDocument
