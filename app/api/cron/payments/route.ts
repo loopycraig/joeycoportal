@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient();
 
-  // 1. Calculate any pay periods / months that are due (created as drafts for review)
+  // 1. Create any monthly fee runs that are due (approved as they're created, so step 3 sends them)
   const { data: created, error } = await admin.rpc("generate_due_payment_runs");
   if (error) {
     console.error("[payments] generate failed", error);
