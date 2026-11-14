@@ -5,8 +5,9 @@ export type Person = { full_name: string | null; email: string };
 export type Terms = {
   id: string;
   effective_date: string;
-  hourly_rate_cents: number;
-  monthly_rent_cents: number;
+  /** Either can be missing until its agreement is signed. */
+  hourly_rate_cents: number | null;
+  monthly_rent_cents: number | null;
   status: "proposed" | "accepted" | "declined" | "withdrawn" | "superseded";
   note: string | null;
   proposed_by: string;

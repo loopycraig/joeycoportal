@@ -29,7 +29,7 @@ export const ENTRY_FIELDS =
 
 export type PeriodSpan = { period_start: string; period_end: string; payday: string; handed_off: boolean };
 
-export type Rate = { effective_date: string; hourly_rate_cents: number };
+export type Rate = { effective_date: string; hourly_rate_cents: number | null };
 
 /** The Exhibit A categories, offered as optional tags on a worked day. */
 export const TAGS = ["Around the House", "Meals & Groceries", "Out & About", "Wellness", "Staying Connected"];

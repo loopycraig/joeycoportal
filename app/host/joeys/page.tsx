@@ -7,7 +7,12 @@ import { personName, type Person } from "@/lib/people";
 import { getPaySchedules, getPtoBalances, getToday } from "@/lib/timesheets-server";
 import type { TermValue } from "@/components/joey-terms";
 
-type TermRow = { match_id: string; effective_date: string; hourly_rate_cents: number; monthly_rent_cents: number };
+type TermRow = {
+  match_id: string;
+  effective_date: string;
+  hourly_rate_cents: number | null;
+  monthly_rent_cents: number | null;
+};
 type OpenAmendment = {
   id: string;
   match_id: string;
@@ -26,11 +31,12 @@ function termValue(
 ): TermValue {
   const sorted = [...rows].sort((a, b) => a.effective_date.localeCompare(b.effective_date));
   const current = sorted.filter((r) => r.effective_date <= today).at(-1) ?? null;
-  const next = sorted.find((r) => r.effective_date > today && r[key] !== (current?.[key] ?? null)) ?? null;
+  const next =
+    sorted.find((r) => r.effective_date > today && r[key] !== null && r[key] !== (current?.[key] ?? null)) ?? null;
   const f = open?.draft_fields ?? {};
   return {
     current: current?.[key] ?? null,
-    next: next ? { cents: next[key], from: next.effective_date } : null,
+    next: next && next[key] !== null ? { cents: next[key], from: next.effective_date } : null,
     open: open
       ? {
           id: open.id,

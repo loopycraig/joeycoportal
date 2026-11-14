@@ -29,7 +29,9 @@ export function MatchTermsList({
 }
 
 function summarize(t: Terms) {
-  return `${formatCents(t.hourly_rate_cents)}/hr and ${formatCents(t.monthly_rent_cents)}/mo rent`;
+  const rate = t.hourly_rate_cents === null ? "no hourly rate yet" : `${formatCents(t.hourly_rate_cents)}/hr`;
+  const rent = t.monthly_rent_cents === null ? "no rent yet" : `${formatCents(t.monthly_rent_cents)}/mo rent`;
+  return `${rate} and ${rent}`;
 }
 
 // Rate and rent changes are signed amendments now (Agreements). Proposals made before that can

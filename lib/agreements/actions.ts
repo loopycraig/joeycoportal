@@ -111,7 +111,7 @@ async function prefill(kind: AgreementKind, hostId: string, matchId: string | nu
       .maybeSingle(),
   ]);
 
-  let terms: { hourly_rate_cents: number; monthly_rent_cents: number } | null = null;
+  let terms: { hourly_rate_cents: number | null; monthly_rent_cents: number | null } | null = null;
   if (matchId) {
     const { data } = await admin
       .from("match_terms")
