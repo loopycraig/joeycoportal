@@ -185,7 +185,7 @@ export function JoeyTimesheet({
         <span>
           Host: <span className="text-foreground">{match.hostName}</span>
           {otherMatches.map((m) => (
-            <Link key={m.id} href={`/joey?match=${m.id}`} className="ml-2 underline-offset-2 hover:underline">
+            <Link key={m.id} href={`/joey/timesheets?match=${m.id}`} className="ml-2 underline-offset-2 hover:underline">
               Switch to {m.hostName}
             </Link>
           ))}
