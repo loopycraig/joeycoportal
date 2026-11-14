@@ -4,16 +4,22 @@ import { PageHeader, EmptyState } from "@/components/app-shell";
 import { getMatchesWithTerms, getStatements } from "@/lib/payments/queries";
 import { MatchTermsList } from "@/components/payments/match-terms";
 import { StatementList } from "@/components/payments/statement-list";
+import { PayPeriodList } from "@/components/payments/pay-periods";
+import { getPayPeriods } from "@/lib/payments/periods";
 
 export default function JoeyPaymentsPage() {
   return (
     <>
       <PageHeader title="Payments" />
+      <SectionHeading>Pay by pay period</SectionHeading>
+      <Suspense>
+        <Periods />
+      </Suspense>
       <SectionHeading>Agreed terms</SectionHeading>
       <Suspense>
         <Terms />
       </Suspense>
-      <SectionHeading>Statements</SectionHeading>
+      <SectionHeading>JoeyCo statements (rent and fees)</SectionHeading>
       <Suspense>
         <Statements />
       </Suspense>
@@ -40,4 +46,16 @@ async function Statements() {
     return <EmptyState title="No statements yet">Your first pay period shows up here after a Host approves your hours.</EmptyState>;
   }
   return <StatementList statements={statements} />;
+}
+
+async function Periods() {
+  const { today, periods } = await getPayPeriods("joey");
+  if (periods.length === 0) {
+    return (
+      <EmptyState title="No pay periods yet">
+        Hours show up here by pay period once they&apos;re submitted, with when they&apos;re due and whether they&apos;re paid.
+      </EmptyState>
+    );
+  }
+  return <PayPeriodList periods={periods} role="joey" today={today} />;
 }

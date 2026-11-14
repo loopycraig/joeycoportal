@@ -1,4 +1,4 @@
-import { formatHours, formatMoney, type Totals } from "@/lib/timesheets";
+import { formatHours, formatMoney, formatShort, type Totals } from "@/lib/timesheets";
 
 /** Hours by type and the estimated gross, as a compact strip. */
 export function WeekTotals({ totals, label = "Estimated gross" }: { totals: Totals; label?: string }) {
@@ -26,8 +26,10 @@ export function WeekTotals({ totals, label = "Estimated gross" }: { totals: Tota
       </dl>
       <p className="text-right text-xs text-muted-foreground">
         {totals.missingRate
-          ? "Some days have no agreed hourly rate yet, so this is incomplete."
-          : "Before taxes. Poppins calculates the final pay."}
+          ? "There's no agreed hourly rate yet, so this can't be estimated."
+          : totals.assumedRateFrom
+            ? `Some days are before the agreed rate started (${formatShort(totals.assumedRateFrom)}), so they're estimated at that rate. Before taxes and deductions.`
+            : "Before taxes and deductions. Your payroll provider works out the final pay."}
       </p>
     </div>
   );

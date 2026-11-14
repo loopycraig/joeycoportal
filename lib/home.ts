@@ -95,7 +95,7 @@ export async function getHostHome(): Promise<HomeCardData[]> {
           .from("pay_periods")
           .select("id, match_id, period_start, period_end, payday, time_entries(status)")
           .in("match_id", ids)
-          .is("handed_off_at", null)
+          .is("paid_on", null)
           .order("period_start")
       : Promise.resolve({ data: [], error: null }),
     ids.length
@@ -112,9 +112,10 @@ export async function getHostHome(): Promise<HomeCardData[]> {
   if (terms.error) throw new Error(terms.error.message);
   const termRows = (terms.data ?? []) as TermRow[];
 
-  // Timesheets
+  // Timesheets, and approved periods to pay (Payments)
   const ts: HomeAction[] = [];
   const tsInfo: string[] = [];
+  const pay: HomeAction[] = [];
   type PeriodRow = {
     id: string;
     match_id: string;
@@ -138,20 +139,20 @@ export async function getHostHome(): Promise<HomeCardData[]> {
     } else if (statuses.includes("changes_requested")) {
       tsInfo.push(`Waiting on ${nameOf(p.match_id)} to fix hours for ${range}`);
     } else if (statuses.length > 0 && statuses.every((s) => s === "approved") && p.period_end < today) {
-      ts.push({
-        label: `Enter ${nameOf(p.match_id)}'s ${range} hours in Poppins`,
-        detail: `For the ${formatShort(p.payday)} payday`,
-        href: "/host/timesheets",
-        urgent: today >= p.payday,
+      pay.push({
+        label: `Pay ${nameOf(p.match_id)} for ${range}`,
+        detail: `${today > p.payday ? "Overdue, was due" : "Due"} ${formatShort(p.payday)} · then mark it paid`,
+        href: "/host/payments",
+        urgent: today > p.payday,
       });
     }
   }
   if (ts.length === 0 && tsInfo.length === 0) tsInfo.push(matches.length ? "No hours waiting for you." : "Hours show up here once you have a Joey.");
 
   // Payments
-  const pay: HomeAction[] = termRows
-    .filter((t) => t.status === "proposed" && t.proposed_by !== profile.id)
-    .map((t) => ({ label: `Respond to ${nameOf(t.match_id)}'s proposed terms`, href: "/host/payments" }));
+  for (const t of termRows.filter((t) => t.status === "proposed" && t.proposed_by !== profile.id)) {
+    pay.push({ label: `Respond to ${nameOf(t.match_id)}'s proposed terms`, href: "/host/payments" });
+  }
   const payInfo = matches.map((m) => {
     const t = currentTerms(termRows, m.id, today);
     return `${personName(m.other)}: ${money(t?.hourly_rate_cents ?? null, "/hr")} · rent ${money(t?.monthly_rent_cents ?? null, "/mo")}`;
@@ -324,6 +325,21 @@ export async function getJoeyHome(): Promise<HomeCardData[]> {
   }
   const now = currentTerms(termRows, match.id, today);
   payInfo.push(`Hourly rate ${money(now?.hourly_rate_cents ?? null, "/hr")} · rent ${money(now?.monthly_rent_cents ?? null, "/mo")}`);
+  const { data: paidRows } = await supabase
+    .from("pay_periods")
+    .select("period_start, period_end, payday, paid_on, paid_amount_cents")
+    .eq("match_id", match.id)
+    .order("period_start", { ascending: false })
+    .limit(6);
+  const lastPaid = (paidRows ?? []).find((p) => p.paid_on);
+  if (lastPaid) {
+    payInfo.push(
+      `Last paid ${formatMoney(lastPaid.paid_amount_cents ?? 0)} on ${formatShort(lastPaid.paid_on!)} for ${formatRange(lastPaid.period_start, lastPaid.period_end)}`,
+    );
+  }
+  for (const p of (paidRows ?? []).filter((p) => !p.paid_on && p.payday < today)) {
+    payInfo.push(`${formatRange(p.period_start, p.period_end)} isn't marked paid yet (was due ${formatShort(p.payday)})`);
+  }
   payInfo.push(`PTO available: ${formatHours(balances.get(match.id) ?? 0)}`);
   if (statement) payInfo.push(statement);
 

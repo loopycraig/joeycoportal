@@ -33,7 +33,7 @@ async function TimesheetsData() {
   const since = addDays(today, -DAYS_BACK);
   const { data: periodRows, error: periodError } = await supabase
     .from("pay_periods")
-    .select("id, match_id, period_start, period_end, payday, handed_off_at")
+    .select("id, match_id, period_start, period_end, payday, paid_on")
     .in("match_id", matchIds)
     .gte("period_end", since)
     .order("period_start", { ascending: false });
@@ -72,7 +72,7 @@ async function TimesheetsData() {
         periodStart: p.period_start,
         periodEnd: p.period_end,
         payday: p.payday,
-        handedOffAt: p.handed_off_at,
+        paidOn: p.paid_on,
         entries: allEntries.filter((e) => e.pay_period_id === p.id),
         rates: rates.get(p.match_id) ?? [],
         ptoBalance: balances.get(p.match_id) ?? 0,
