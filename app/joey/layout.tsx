@@ -19,16 +19,17 @@ async function JoeyShell({ children }: { children: React.ReactNode }) {
   const [matched, unlocked] = await Promise.all([isMatched(), agreementsUnlocked()]);
 
   const portal = [
-    { href: "/joey", label: "Timecards" },
-    { href: "/joey/hosts", label: "Hosts" },
+    { href: "/joey", label: "Home" },
+    { href: "/joey/timesheets", label: "Timesheets" },
     { href: "/joey/payments", label: "Payments" },
   ];
   const agreements = { href: "/joey/agreements", label: "Agreements" };
+  const myHost = { href: "/joey/hosts", label: "My Host" };
   const nav = matched
-    ? [...portal, agreements]
+    ? [...portal, agreements, myHost]
     : [
         unlocked ? agreements : { href: "/joey/application", label: "Application" },
-        ...portal.map((p) => ({ ...p, locked: true })),
+        ...[...portal, myHost].map((p) => ({ ...p, locked: true })),
       ];
 
   return (

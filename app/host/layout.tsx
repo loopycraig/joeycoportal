@@ -18,10 +18,11 @@ async function HostShell({ children }: { children: React.ReactNode }) {
       profile={profile}
       portalName="Host Portal"
       nav={[
-        { href: "/host", label: "Review" },
-        { href: "/host/payments", label: "Payments"},
-        { href: "/host/joeys", label: "Joeys" },
+        { href: "/host", label: "Home" },
+        { href: "/host/timesheets", label: "Timesheets" },
+        { href: "/host/payments", label: "Payments" },
         { href: "/host/agreements", label: "Agreements" },
+        { href: "/host/joeys", label: "My Joeys" },
       ]}
     >
       {children}

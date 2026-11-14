@@ -47,7 +47,7 @@ export const agreementsUnlocked = cache(async (): Promise<boolean> => {
   return data?.status === "submitted" && AGREEMENT_STAGES.includes(data.stage_key);
 });
 
-/** For pages that only make sense once a Joey has a Host (timecards, payments, settings). */
+/** For pages that only make sense once a Joey has a Host (timesheet, payments, settings). */
 export async function requireMatchedJoey() {
   if (!(await isMatched())) redirect("/joey/application");
 }

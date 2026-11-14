@@ -31,7 +31,7 @@ async function Terms() {
   if (matches.length === 0) {
     return <EmptyState title="No active Joeys" />;
   }
-  return <MatchTermsList matches={matches} userId={profile.id} />;
+  return <MatchTermsList matches={matches} userId={profile.id} role="host" />;
 }
 
 async function Statements() {

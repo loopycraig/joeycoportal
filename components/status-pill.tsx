@@ -1,14 +1,14 @@
 import { cn } from "@/lib/utils";
-import type { TimecardStatus } from "@/lib/timecards";
+import type { EntryStatus } from "@/lib/timesheets";
 
-const STYLES: Record<TimecardStatus, { label: string; dot: string }> = {
+const STYLES: Record<EntryStatus, { label: string; dot: string }> = {
   draft: { label: "Draft", dot: "bg-muted-foreground/60" },
   submitted: { label: "Submitted", dot: "bg-amber-400" },
   approved: { label: "Approved", dot: "bg-emerald-500" },
-  rejected: { label: "Rejected", dot: "bg-red-500" },
+  changes_requested: { label: "Changes requested", dot: "bg-red-500" },
 };
 
-export function StatusPill({ status }: { status: TimecardStatus }) {
+export function StatusPill({ status }: { status: EntryStatus }) {
   const { label, dot } = STYLES[status];
   return <Pill label={label} dot={dot} />;
 }
@@ -22,7 +22,7 @@ const TONES = {
 
 export type PillTone = keyof typeof TONES;
 
-/** A label with a coloured dot. Use `tone` for anything that isn't a timecard. */
+/** A label with a coloured dot. Use `tone` for anything that isn't a time entry. */
 export function Pill({ label, dot, tone = "neutral" }: { label: string; dot?: string; tone?: PillTone }) {
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
