@@ -312,7 +312,7 @@ export async function getJoeyHome(): Promise<HomeCardData[]> {
       { title: "Timesheets", href: "/joey/timesheets", rows: [], empty: locked },
       { title: "Payments", href: "/joey/payments", rows: [], empty: locked },
       agreementsCard,
-      { title: "My Host", href: "/joey/hosts", rows: [], empty: "You're not matched with a Host yet." },
+      { title: "Matches", href: "/joey/hosts", rows: [], empty: "You're not matched with a Host yet." },
     ];
   }
 
@@ -411,7 +411,7 @@ export async function getJoeyHome(): Promise<HomeCardData[]> {
     ...paymentRows(periods, "joey", today),
   ];
 
-  // My Host
+  // Matches
   const ending = match.employment_ends_on && match.housing_ends_on;
   const moveSoon = ending && today >= addDays(match.housing_ends_on!, -2);
   const schedule = SCHEDULE_LABELS[schedules.get(match.id)?.current ?? "semimonthly"];
@@ -434,6 +434,6 @@ export async function getJoeyHome(): Promise<HomeCardData[]> {
     { title: "Timesheets", href: "/joey/timesheets", rows: ts, empty: "Nothing to submit." },
     { title: "Payments", href: "/joey/payments", rows: pay, empty: "No pay periods yet." },
     agreementsCard,
-    { title: "My Host", href: "/joey/hosts", rows: host, empty: "" },
+    { title: "Matches", href: "/joey/hosts", rows: host, empty: "" },
   ];
 }

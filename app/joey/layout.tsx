@@ -24,12 +24,12 @@ async function JoeyShell({ children }: { children: React.ReactNode }) {
     { href: "/joey/payments", label: "Payments" },
   ];
   const agreements = { href: "/joey/agreements", label: "Agreements" };
-  const myHost = { href: "/joey/hosts", label: "My Host" };
+  const matches = { href: "/joey/hosts", label: "Matches" };
   const nav = matched
-    ? [...portal, agreements, myHost]
+    ? [...portal, agreements, matches]
     : [
         unlocked ? agreements : { href: "/joey/application", label: "Application" },
-        ...[...portal, myHost].map((p) => ({ ...p, locked: true })),
+        ...[...portal, matches].map((p) => ({ ...p, locked: true })),
       ];
 
   return (

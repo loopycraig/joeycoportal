@@ -16,7 +16,7 @@ type MatchRow = {
 export default function JoeyHostsPage() {
   return (
     <>
-      <PageHeader title="My Host" />
+      <PageHeader title="Matches" />
       <Suspense>
         <HostList />
       </Suspense>
@@ -69,7 +69,7 @@ async function HostList() {
 
   const pending = matches.filter((m) => !m.ended_at && !agreed(m));
   const active = matches.filter((m) => !m.ended_at && agreed(m));
-  const expired = matches.filter((m) => m.ended_at);
+  const completed = matches.filter((m) => m.ended_at);
 
   return (
     <PageTabs
@@ -82,7 +82,7 @@ async function HostList() {
           content: tab(pending, "Nothing pending. A match shows here until your offer letter and housing license are signed."),
         },
         { id: "active", label: "Active", content: tab(active, "No active Host.") },
-        { id: "expired", label: "Expired", content: tab(expired, "No past Hosts.") },
+        { id: "completed", label: "Completed", content: tab(completed, "No completed matches.") },
       ]}
     />
   );
