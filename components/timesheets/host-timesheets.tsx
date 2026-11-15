@@ -8,7 +8,9 @@ import {
   entryFlags,
   formatDay,
   formatHours,
+  formatMoney,
   formatRange,
+  hoursIn,
   formatShort,
   formatTime,
   totalsFor,
@@ -24,6 +26,7 @@ import { Pill, StatusPill } from "@/components/status-pill";
 import { EmptyState, PageHeader, SectionHeader, textareaClass } from "@/components/page-parts";
 import { WeekTotals } from "@/components/timesheets/week-totals";
 import { PageTabs } from "@/components/page-tabs";
+import { ExpandableRow } from "@/components/expandable-row";
 import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -57,7 +60,8 @@ export function HostTimesheets({
   splits: Record<string, EntrySplit>;
 }) {
   const has = (p: HostPeriod, s: TimeEntry["status"]) => p.entries.some((e) => e.status === s);
-  const review = periods.filter((p) => has(p, "submitted")).reverse();
+  // Newest pay period first on every tab.
+  const review = periods.filter((p) => has(p, "submitted"));
   const waiting = periods.filter((p) => !has(p, "submitted") && has(p, "changes_requested") && !p.paidOn);
   const ready = periods.filter((p) => !has(p, "submitted") && !has(p, "changes_requested") && !p.paidOn);
   const paid = periods.filter((p) => !has(p, "submitted") && p.paidOn);
@@ -154,26 +158,38 @@ function PeriodCard({
   const ptoUsedHere = submitted.filter((e) => e.kind === "pto" || e.kind === "sick").reduce((s, e) => s + Number(e.hours), 0);
 
   return (
-    <article id={`period-${p.id}`} className="scroll-mt-4 border-b px-4 py-4 sm:px-6">
-      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h3 className="text-sm font-medium">{p.joeyName}</h3>
-        <span className="text-sm text-muted-foreground">
-          {formatRange(p.periodStart, p.periodEnd)} · paid by {formatShort(p.payday)}
-        </span>
-        <span className="ml-auto">
-          {submitted.length > 0 ? (
-            <Pill
-              tone={overdue ? "stopped" : "waiting"}
-              label={overdue ? `Overdue · approve by ${formatShort(approveBy)}` : `Approve by ${formatShort(approveBy)}`}
-            />
-          ) : p.paidOn ? (
-            <Pill tone="done" label={`Paid ${formatShort(p.paidOn)}`} />
-          ) : null}
-        </span>
-      </header>
+    <ExpandableRow
+      id={`period-${p.id}`}
+      summary={
+        <>
+          <span className="font-medium">{p.joeyName}</span>
+          <span className="text-muted-foreground">
+            {formatRange(p.periodStart, p.periodEnd)} · paid by {formatShort(p.payday)}
+          </span>
+          <span className="ml-auto flex items-center gap-4">
+            <span className="tabular-nums text-muted-foreground">
+              {formatHours(hoursIn(totals))}
+              {!totals.missingRate && <> · {formatMoney(totals.grossCents)}</>}
+            </span>
+            {submitted.length > 0 ? (
+              <Pill
+                tone={overdue ? "stopped" : "waiting"}
+                label={overdue ? `Overdue · approve by ${formatShort(approveBy)}` : `Approve by ${formatShort(approveBy)}`}
+              />
+            ) : p.entries.some((e) => e.status === "changes_requested") ? (
+              <Pill tone="waiting" label="Sent back" />
+            ) : p.paidOn ? (
+              <Pill tone="done" label={`Paid ${formatShort(p.paidOn)}`} />
+            ) : (
+              <Pill tone="done" label="Approved" />
+            )}
+          </span>
+        </>
+      }
+    >
 
       {weekdayIndex(p.periodStart) !== 0 && (
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           The week of {formatShort(addDays(p.periodStart, -weekdayIndex(p.periodStart)))} started in the previous pay
           period. Overtime counts the whole week.
         </p>
@@ -312,6 +328,6 @@ function PeriodCard({
           </Link>
         </div>
       )}
-    </article>
+    </ExpandableRow>
   );
 }

@@ -10,6 +10,7 @@ import {
   formatHours,
   formatMoney,
   formatRange,
+  hoursIn,
   formatShort,
   formatTime,
   mondayOf,
@@ -31,6 +32,7 @@ import { PageHeader } from "@/components/page-parts";
 import { EntryForm } from "@/components/timesheets/entry-form";
 import { WeekTotals } from "@/components/timesheets/week-totals";
 import { PageTabs } from "@/components/page-tabs";
+import { ExpandableRow } from "@/components/expandable-row";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
@@ -489,19 +491,28 @@ function PeriodSummary({
   onOpenDay: (d: string) => void;
 }) {
   const sorted = [...entries].sort((a, b) => a.work_date.localeCompare(b.work_date));
+  const totals = totalsFor(entries, splits, rates);
   return (
-    <article id={`period-${p.id}`} className="scroll-mt-4 border-b px-4 py-4 text-sm sm:px-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="font-medium">Pay period {formatRange(p.period_start, p.period_end)}</p>
-        <p className="text-xs text-muted-foreground">
-          {p.paid_on
-            ? `Paid ${formatShort(p.paid_on)}${p.paid_amount_cents !== null ? ` · ${formatMoney(p.paid_amount_cents)} gross` : ""}`
-            : entries.every((e) => e.status === "approved")
-              ? `Approved · paid by ${formatShort(p.payday)}`
-              : `Waiting on your Host · paid by ${formatShort(p.payday)}`}
-        </p>
-      </div>
-      <ul className="my-3 divide-y rounded-md border">
+    <ExpandableRow
+      id={`period-${p.id}`}
+      summary={
+        <>
+          <span className="font-medium">Pay period {formatRange(p.period_start, p.period_end)}</span>
+          <span className="tabular-nums text-muted-foreground">
+            {formatHours(hoursIn(totals))}
+            {!totals.missingRate && <> · {formatMoney(totals.grossCents)} est.</>}
+          </span>
+          <span className="ml-auto text-xs text-muted-foreground">
+            {p.paid_on
+              ? `Paid ${formatShort(p.paid_on)}${p.paid_amount_cents !== null ? ` · ${formatMoney(p.paid_amount_cents)} gross` : ""}`
+              : entries.every((e) => e.status === "approved")
+                ? `Approved · paid by ${formatShort(p.payday)}`
+                : `Waiting on your Host · paid by ${formatShort(p.payday)}`}
+          </span>
+        </>
+      }
+    >
+      <ul className="mb-3 divide-y rounded-md border">
         {sorted.map((e) => {
           const overtime = splits.get(e.id)?.overtime ?? 0;
           return (
@@ -529,7 +540,7 @@ function PeriodSummary({
           );
         })}
       </ul>
-      <WeekTotals totals={totalsFor(entries, splits, rates)} />
-    </article>
+      <WeekTotals totals={totals} />
+    </ExpandableRow>
   );
 }
