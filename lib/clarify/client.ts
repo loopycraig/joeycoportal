@@ -119,6 +119,20 @@ export async function listUpdatedAfter(
   return { records: res.data ?? [], hasMore: Boolean(res.links?.next) && (res.data?.length ?? 0) === limit };
 }
 
+export type ResourcePage = {
+  data: (ClarifyRecord & { relationships?: Record<string, unknown> })[];
+  included?: ClarifyRecord[];
+};
+
+/**
+ * One page of records matching query params such as filter[stage]=Search or include=company_id.
+ * Filters are ANDed; dotted paths (filter[host_id.email]) filter on a related record's field.
+ */
+export async function listResources(object: string, params: Record<string, string>, limit = 100) {
+  const qs = new URLSearchParams({ ...params, "page[limit]": String(limit) });
+  return request<ResourcePage>("GET", `/objects/${object}/resources?${qs}`);
+}
+
 /** Select fields can come back as a string or an object; normalize to the label. */
 export function readSelect(value: unknown): string | null {
   if (value == null) return null;

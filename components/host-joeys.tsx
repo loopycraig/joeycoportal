@@ -10,7 +10,9 @@ import { PageTabs } from "@/components/page-tabs";
 import { JoeyTerms, type JoeyTermsInfo } from "@/components/joey-terms";
 import { cancelMatchEnd, endMatchWithNotice } from "@/lib/agreements/actions";
 import { addDays, formatHours, formatShort } from "@/lib/timesheets";
+import type { ProposedJoey } from "@/lib/clarify/proposed";
 import { Plus } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -28,21 +30,29 @@ export type JoeyMatch = {
 };
 
 /**
+ * Proposed: Joeys the JoeyCo team has lined up for the Host (from Clarify), before any match exists.
  * Pending: matched, but the offer letter and housing license aren't both signed yet.
- * Active: working under agreed terms. Expired: the match has ended. Opens on Pending when there are
- * any, otherwise Active.
+ * Active: working under agreed terms. Expired: the match has ended.
+ * Opens on Pending when there are any (signatures are waiting on someone), then Proposed when there
+ * are Joeys to look at, otherwise Active.
  */
 export function HostJoeys({
+  proposed,
+  proposedNote,
   pending,
   active,
   expired,
 }: {
+  proposed: ProposedJoey[];
+  /** Shown instead of the list when proposed Joeys couldn't be loaded. */
+  proposedNote: string | null;
   pending: JoeyMatch[];
   active: JoeyMatch[];
   expired: JoeyMatch[];
 }) {
   const [adding, setAdding] = useState(false);
-  const isEmpty = pending.length === 0 && active.length === 0 && expired.length === 0;
+  const isEmpty =
+    proposed.length === 0 && !proposedNote && pending.length === 0 && active.length === 0 && expired.length === 0;
 
   const list = (rows: JoeyMatch[], empty: string) =>
     rows.length === 0 ? (
@@ -58,7 +68,7 @@ export function HostJoeys({
   return (
     <>
       <PageHeader
-        title="My Joeys"
+        title="Matches"
         actions={
           !adding && (
             <Button size="sm" onClick={() => setAdding(true)}>
@@ -72,13 +82,20 @@ export function HostJoeys({
       {adding && <AddJoeyForm onDone={() => setAdding(false)} />}
 
       {isEmpty && !adding ? (
-        <EmptyState title="No Joeys yet">
-          Add a Joey by email. They need to sign up and choose Joey first.
+        <EmptyState title="No matches yet">
+          Joeys the JoeyCo team proposes for you show up here. If you already have a Joey, add them by email. They
+          need to sign up and choose Joey first.
         </EmptyState>
       ) : (
         <PageTabs
-          defaultTab={pending.length > 0 ? "pending" : "active"}
+          defaultTab={pending.length > 0 ? "pending" : proposed.length > 0 ? "proposed" : "active"}
           tabs={[
+            {
+              id: "proposed",
+              label: "Proposed",
+              count: proposed.length,
+              content: <ProposedList joeys={proposed} note={proposedNote} />,
+            },
             {
               id: "pending",
               label: "Pending",
@@ -91,6 +108,63 @@ export function HostJoeys({
         />
       )}
     </>
+  );
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("");
+}
+
+export function JoeyAvatar({ name, className }: { name: string; className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={`flex shrink-0 items-center justify-center rounded-full bg-muted font-medium text-muted-foreground ${className ?? "size-10 text-sm"}`}
+    >
+      {initials(name)}
+    </span>
+  );
+}
+
+function ProposedList({ joeys, note }: { joeys: ProposedJoey[]; note: string | null }) {
+  if (note || joeys.length === 0) {
+    return (
+      <p className="border-b px-4 py-4 text-sm text-muted-foreground sm:px-6">
+        {note ?? "No Joeys proposed yet. The JoeyCo team adds candidates here as they find them."}
+      </p>
+    );
+  }
+  return (
+    <ul className="grid gap-3 p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">
+      {joeys.map((j) => (
+        <li key={j.id}>
+          <Link
+            href={`/host/joeys/proposed/${j.id}`}
+            className="flex h-full flex-col gap-3 rounded-lg border bg-card p-4 text-sm transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <div className="flex items-center gap-3">
+              <JoeyAvatar name={j.name} />
+              <div className="min-w-0">
+                <p className="truncate font-medium">{j.name}</p>
+                {j.school && <p className="truncate text-xs text-muted-foreground">{j.school}</p>}
+              </div>
+            </div>
+            {j.bio ? (
+              <p className="line-clamp-4 text-muted-foreground">{j.bio}</p>
+            ) : (
+              <p className="text-muted-foreground italic">No bio yet.</p>
+            )}
+            {j.cities.length > 0 && (
+              <p className="mt-auto text-xs text-muted-foreground">Prefers {j.cities.join(", ")}</p>
+            )}
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 

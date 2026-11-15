@@ -4,6 +4,7 @@ import { getProfile } from "@/lib/profile";
 import { PageHeader } from "@/components/page-parts";
 import { HostJoeys, type JoeyMatch } from "@/components/host-joeys";
 import { personName, type Person } from "@/lib/people";
+import { getProposedJoeys, type ProposedJoey } from "@/lib/clarify/proposed";
 import { getPaySchedules, getPtoBalances, getToday } from "@/lib/timesheets-server";
 import type { TermValue } from "@/components/joey-terms";
 
@@ -65,9 +66,21 @@ const signed = (m: MatchRow) =>
 const fmt = (d: string) =>
   new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
+/** Proposed Joeys from Clarify. A Clarify outage shows a note on the tab instead of breaking the page. */
+async function loadProposed(email: string): Promise<{ joeys: ProposedJoey[]; note: string | null }> {
+  try {
+    const res = await getProposedJoeys(email);
+    if (!res.configured) return { joeys: [], note: "Proposed Joeys aren't available right now." };
+    return { joeys: res.joeys, note: null };
+  } catch (e) {
+    console.error("[clarify] proposed Joeys failed", e);
+    return { joeys: [], note: "Proposed Joeys couldn't be loaded. Try again in a minute." };
+  }
+}
+
 export default function HostJoeysPage() {
   return (
-    <Suspense fallback={<PageHeader title="My Joeys" />}>
+    <Suspense fallback={<PageHeader title="Matches" />}>
       <JoeysData />
     </Suspense>
   );
@@ -77,6 +90,7 @@ async function JoeysData() {
   const profile = await getProfile();
   const supabase = await createClient();
 
+  const proposedLoad = loadProposed(profile.email);
   const { data, error } = await supabase
     .from("matches")
     .select(
@@ -140,10 +154,13 @@ async function JoeysData() {
         : null,
   }));
 
+  const proposed = await proposedLoad;
   const isSigned = new Set((data as unknown as MatchRow[]).filter(signed).map((m) => m.id));
   const current = rows.filter((r) => r.ended === null);
   return (
     <HostJoeys
+      proposed={proposed.joeys}
+      proposedNote={proposed.note}
       pending={current.filter((r) => !isSigned.has(r.id))}
       active={current.filter((r) => isSigned.has(r.id))}
       expired={rows.filter((r) => r.ended !== null)}

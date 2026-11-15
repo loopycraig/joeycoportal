@@ -22,7 +22,7 @@ async function HostShell({ children }: { children: React.ReactNode }) {
         { href: "/host/timesheets", label: "Timesheets" },
         { href: "/host/payments", label: "Payments" },
         { href: "/host/agreements", label: "Agreements" },
-        { href: "/host/joeys", label: "My Joeys" },
+        { href: "/host/joeys", label: "Matches" },
       ]}
     >
       {children}
