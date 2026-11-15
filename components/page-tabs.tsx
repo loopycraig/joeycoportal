@@ -16,9 +16,25 @@ export type PageTab = {
   content: React.ReactNode;
 };
 
-export function PageTabs({ tabs, defaultTab }: { tabs: PageTab[]; defaultTab?: string }) {
+export function PageTabs({
+  tabs,
+  defaultTab,
+  active: controlled,
+  onSelect,
+}: {
+  tabs: PageTab[];
+  defaultTab?: string;
+  /** Optional: the parent picks the tab (e.g. to jump to one from a link inside another). */
+  active?: string;
+  onSelect?: (id: string) => void;
+}) {
   const first = defaultTab && tabs.some((t) => t.id === defaultTab) ? defaultTab : tabs[0].id;
-  const [active, setActive] = useState(first);
+  const [own, setOwn] = useState(first);
+  const active = controlled ?? own;
+  const setActive = (id: string) => {
+    setOwn(id);
+    onSelect?.(id);
+  };
 
   useEffect(() => {
     const hash = window.location.hash.slice(1);

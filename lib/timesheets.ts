@@ -277,6 +277,9 @@ export type Totals = {
 };
 
 /** Hours by type and estimated gross pay for a set of entries (split from their full weeks). */
+/** Every hour in the totals: worked (regular and overtime) and paid time off. */
+export const hoursIn = (t: Totals) => t.regular + t.overtime + t.pto + t.sick + t.holiday;
+
 export function totalsFor(entries: SplitInput[], splits: Map<string, EntrySplit>, rates: Rate[]): Totals {
   const t: Totals = { regular: 0, overtime: 0, pto: 0, sick: 0, holiday: 0, grossCents: 0, missingRate: false, assumedRateFrom: null };
   for (const e of entries) {

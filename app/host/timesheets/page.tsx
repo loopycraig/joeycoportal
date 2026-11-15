@@ -9,7 +9,7 @@ import { getOfferTerms, getPtoBalances, getRates, getToday } from "@/lib/timeshe
 
 export default function HostTimesheetsPage() {
   return (
-    <Suspense fallback={<PageHeader title="Timesheets" />}>
+    <Suspense fallback={<PageHeader title="Timecards" />}>
       <TimesheetsData />
     </Suspense>
   );

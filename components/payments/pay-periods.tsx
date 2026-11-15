@@ -1,6 +1,6 @@
 "use client";
 
-// A pay period's details in the payments list: the days in it (linking back to Timesheets), approving
+// A pay period's details in the payments list: the days in it (linking back to Timecards), approving
 // them and, for the Host, recording the payment.
 
 import { createClient } from "@/lib/supabase/client";
@@ -61,7 +61,7 @@ export function PayPeriodDetail({ period: p, role, today }: { period: PayPeriod;
       <WeekTotals totals={p.totals} />
 
       <Link href={p.timesheetHref} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        Open these days in Timesheets
+        Open these days in Timecards
         <ArrowRight className="size-3.5" aria-hidden />
       </Link>
 
@@ -74,7 +74,7 @@ export function PayPeriodDetail({ period: p, role, today }: { period: PayPeriod;
   );
 }
 
-/** The Host approves the period's submitted hours here, the same as from Timesheets. */
+/** The Host approves the period's submitted hours here, the same as from Timecards. */
 function ApprovePeriod({ periodId, count }: { periodId: string; count: number }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);

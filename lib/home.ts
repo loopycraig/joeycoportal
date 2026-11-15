@@ -25,7 +25,7 @@ import { getPaySchedules, getPtoBalances, getToday } from "@/lib/timesheets-serv
 import type { HomeCardData, HomeRow } from "@/components/home/home-grid";
 import type { PillTone } from "@/components/status-pill";
 
-/** Days after a pay period ends that the Host has to approve it (same as the Timesheets page). */
+/** Days after a pay period ends that the Host has to approve it (same as the Timecards page). */
 const APPROVE_WITHIN_DAYS = 2;
 
 type Role = "host" | "joey";
@@ -209,7 +209,7 @@ export async function getHostHome(): Promise<HomeCardData[]> {
   if (terms.error) throw new Error(terms.error.message);
   const termRows = (terms.data ?? []) as TermRow[];
 
-  // Timesheets: periods with hours to approve, or sent back to the Joey.
+  // Timecards: periods with hours to approve, or sent back to the Joey.
   const ts: HomeRow[] = periods
     .filter((p) => p.status === "needs_approval" || p.status === "changes_requested")
     .sort((a, b) => a.periodStart.localeCompare(b.periodStart))
@@ -271,7 +271,7 @@ export async function getHostHome(): Promise<HomeCardData[]> {
 
   return [
     {
-      title: "Timesheets",
+      title: "Timecards",
       href: "/host/timesheets",
       rows: ts,
       empty: matches.length ? "No hours waiting for you." : "Hours show up here once you have a Joey.",
@@ -309,7 +309,7 @@ export async function getJoeyHome(): Promise<HomeCardData[]> {
   if (!match) {
     const locked = "Unlocks once you're matched with a Host.";
     return [
-      { title: "Timesheets", href: "/joey/timesheets", rows: [], empty: locked },
+      { title: "Timecards", href: "/joey/timesheets", rows: [], empty: locked },
       { title: "Payments", href: "/joey/payments", rows: [], empty: locked },
       agreementsCard,
       { title: "Matches", href: "/joey/hosts", rows: [], empty: "You're not matched with a Host yet." },
@@ -347,7 +347,7 @@ export async function getJoeyHome(): Promise<HomeCardData[]> {
   const current = periodOf(today);
   const week = (d: string) => `/joey/timesheets?match=${match.id}&week=${mondayOf(d)}`;
 
-  // Timesheets: days to submit or fix, then this pay period and any waiting for approval.
+  // Timecards: days to submit or fix, then this pay period and any waiting for approval.
   const ts: HomeRow[] = [];
   const open = (e: (typeof list)[number]) => e.status === "draft" || e.status === "changes_requested";
   const overdue = list
@@ -431,7 +431,7 @@ export async function getJoeyHome(): Promise<HomeCardData[]> {
   ];
 
   return [
-    { title: "Timesheets", href: "/joey/timesheets", rows: ts, empty: "Nothing to submit." },
+    { title: "Timecards", href: "/joey/timesheets", rows: ts, empty: "Nothing to submit." },
     { title: "Payments", href: "/joey/payments", rows: pay, empty: "No pay periods yet." },
     agreementsCard,
     { title: "Matches", href: "/joey/hosts", rows: host, empty: "" },
