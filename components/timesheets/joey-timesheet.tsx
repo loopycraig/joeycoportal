@@ -132,8 +132,17 @@ export function JoeyTimesheet({
   );
   const paidPeriods = payPeriods.filter((p) => p.paid_on && inPeriod(p).length > 0);
   const needsYou = new Set([...overdue, ...changesRequested].map((e) => e.id)).size;
-  const weekLink = (d: string) =>
-    `/joey/timesheets?week=${mondayOf(d)}${otherMatches.length > 0 ? `&match=${match.id}` : ""}`;
+  // Opening a day from Pending, Approved or Paid shows its week on In Progress.
+  const [tab, setTab] = useState<string>();
+  const openDay = (d: string) => {
+    setWeek(mondayOf(d));
+    setTab("in-progress");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("tab");
+    url.searchParams.set("week", mondayOf(d));
+    window.history.replaceState(window.history.state, "", url);
+    window.scrollTo({ top: 0 });
+  };
 
   const fillable = schedule
     ? days.filter((d, i) => schedule[i]?.hours && !weekEntries.some((e) => e.work_date === d) && !periodFor(d)?.handed_off)
@@ -342,7 +351,7 @@ export function JoeyTimesheet({
       <p className="border-b px-4 py-4 text-sm text-muted-foreground sm:px-6">{empty}</p>
     ) : (
       list.map((p) => (
-        <PeriodSummary key={p.id} period={p} entries={inPeriod(p)} splits={splits} rates={rates} weekLink={weekLink} />
+        <PeriodSummary key={p.id} period={p} entries={inPeriod(p)} splits={splits} rates={rates} onOpenDay={openDay} />
       ))
     );
 
@@ -380,6 +389,8 @@ export function JoeyTimesheet({
 
       <PageTabs
         defaultTab="in-progress"
+        active={tab}
+        onSelect={setTab}
         tabs={[
           { id: "in-progress", label: "In Progress", count: needsYou, content: inProgress },
           {
@@ -469,13 +480,13 @@ function PeriodSummary({
   entries,
   splits,
   rates,
-  weekLink,
+  onOpenDay,
 }: {
   period: PayPeriod;
   entries: TimeEntry[];
   splits: Map<string, EntrySplit>;
   rates: Rate[];
-  weekLink: (d: string) => string;
+  onOpenDay: (d: string) => void;
 }) {
   const sorted = [...entries].sort((a, b) => a.work_date.localeCompare(b.work_date));
   return (
@@ -495,9 +506,10 @@ function PeriodSummary({
           const overtime = splits.get(e.id)?.overtime ?? 0;
           return (
             <li key={e.id}>
-              <Link
-                href={weekLink(e.work_date)}
-                className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 hover:bg-accent/40"
+              <button
+                type="button"
+                onClick={() => onOpenDay(e.work_date)}
+                className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
               >
                 <span className="w-28 shrink-0">{formatDay(e.work_date)}</span>
                 <span className="min-w-0 flex-1 truncate text-muted-foreground">
@@ -512,7 +524,7 @@ function PeriodSummary({
                   )}
                 </span>
                 {e.status !== "approved" && <StatusPill status={e.status} />}
-              </Link>
+              </button>
             </li>
           );
         })}
