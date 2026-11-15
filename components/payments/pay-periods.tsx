@@ -1,19 +1,17 @@
 "use client";
 
-// Pay by pay period. Each row: the period, what it comes to, when it's due, and paid or not.
-// Expanded: the days in it (linking back to Timesheets) and, for the Host, recording the payment.
+// A pay period's details in the payments list: the days in it (linking back to Timesheets), approving
+// them and, for the Host, recording the payment.
 
 import { createClient } from "@/lib/supabase/client";
 import { friendlyError } from "@/lib/errors";
 import type { PayPeriod } from "@/lib/payments/periods";
-import { PAY_STATUS } from "@/lib/payments/pay-status";
 import {
   KIND_LABELS,
   OT_MULTIPLIER,
   formatDay,
   formatHours,
   formatMoney,
-  formatRange,
   formatShort,
   formatTime,
   rateOn,
@@ -23,111 +21,81 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusPill } from "@/components/status-pill";
 import { WeekTotals } from "@/components/timesheets/week-totals";
-import { cn } from "@/lib/utils";
-import { ArrowRight, Check, ChevronDown, Copy } from "lucide-react";
+import { ArrowRight, Check, Copy } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
-
-export function PayPeriodList({
-  periods,
-  role,
-  today,
-}: {
-  periods: PayPeriod[];
-  role: "host" | "joey";
-  today: string;
-}) {
+/** A pay period's days, totals and, for the Host, approving the hours and recording the payment. */
+export function PayPeriodDetail({ period: p, role, today }: { period: PayPeriod; role: "host" | "joey"; today: string }) {
+  const submitted = p.entries.filter((e) => e.status === "submitted").length;
   return (
-    <ul className="divide-y border-b">
-      {periods.map((p) => (
-        <PayPeriodRow key={p.id} period={p} role={role} today={today} />
-      ))}
-    </ul>
+    <div className="space-y-4">
+      <ul className="divide-y rounded-md border text-sm">
+        {p.entries.map((e) => (
+          <li key={e.id} className="flex flex-wrap items-center gap-x-4 gap-y-0.5 px-3 py-2">
+            <span className="w-28 shrink-0">{formatDay(e.work_date)}</span>
+            <span className="min-w-0 flex-1 truncate text-muted-foreground">
+              {e.kind === "work"
+                ? e.start_time
+                  ? `${formatTime(e.start_time)} – ${formatTime(e.end_time)}`
+                  : "Worked"
+                : KIND_LABELS[e.kind]}
+              {e.late && " · from an earlier period"}
+            </span>
+            <span className="tabular-nums">
+              {formatHours(e.hours)}
+              {(p.splits[e.id]?.overtime ?? 0) > 0 && (
+                <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">
+                  ({formatHours(p.splits[e.id].overtime)} OT)
+                </span>
+              )}
+            </span>
+            <StatusPill status={e.status} />
+          </li>
+        ))}
+      </ul>
+
+      {role === "host" && submitted > 0 && <ApprovePeriod periodId={p.id} count={submitted} />}
+
+      <WeekTotals totals={p.totals} />
+
+      <Link href={p.timesheetHref} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        Open these days in Timesheets
+        <ArrowRight className="size-3.5" aria-hidden />
+      </Link>
+
+      {p.paid ? (
+        <PaidSummary period={p} role={role} />
+      ) : role === "host" && (p.status === "due" || p.status === "overdue") ? (
+        <MarkPaid period={p} today={today} />
+      ) : null}
+    </div>
   );
 }
 
-function PayPeriodRow({ period: p, role, today }: { period: PayPeriod; role: "host" | "joey"; today: string }) {
-  const s = PAY_STATUS[p.status];
-  const amount = p.paid ? p.paid.amountCents : p.totals.grossCents;
-  const ref = useRef<HTMLDetailsElement>(null);
-  // Linked from Home as #pay-<id>: open it and bring it into view.
-  useEffect(() => {
-    if (window.location.hash === `#pay-${p.id}` && ref.current) {
-      ref.current.open = true;
-      ref.current.scrollIntoView({ block: "start" });
-    }
-  }, [p.id]);
+/** The Host approves the period's submitted hours here, the same as from Timesheets. */
+function ApprovePeriod({ periodId, count }: { periodId: string; count: number }) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  const approve = async () => {
+    setPending(true);
+    setError(null);
+    const { error } = await createClient().rpc("approve_pay_period", { p_period: periodId });
+    setPending(false);
+    if (error) return setError(friendlyError(error));
+    router.refresh();
+  };
+
   return (
-    <li id={`pay-${p.id}`} className="scroll-mt-4">
-      <details ref={ref} className="group" open={role === "host" && (p.status === "overdue" || p.status === "due") && p.periodEnd < today}>
-        <summary
-          className={cn(
-            "flex cursor-pointer list-none items-center gap-4 px-4 py-3 text-sm sm:px-6",
-            "hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
-            "[&::-webkit-details-marker]:hidden",
-          )}
-        >
-          <span aria-hidden className={cn("size-2 shrink-0 rounded-full", s.dot)} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate">
-              {formatRange(p.periodStart, p.periodEnd)}
-              <span className="ml-2 text-muted-foreground">{p.otherName}</span>
-            </p>
-            <p className={cn("text-xs", p.status === "overdue" ? "text-red-500" : "text-muted-foreground")}>
-              {role === "host" ? s.host : s.joey}
-              {p.paid ? ` on ${formatShort(p.paid.on)}` : ` · due ${formatShort(p.payday)}`}
-            </p>
-          </div>
-          <div className="shrink-0 text-right">
-            <p className="font-medium tabular-nums">{formatMoney(amount)}</p>
-            <p className="text-xs text-muted-foreground">{p.paid ? "paid, gross" : "estimated, gross"}</p>
-          </div>
-          <ChevronDown aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
-        </summary>
-
-        <div className="space-y-4 px-4 pb-5 sm:px-6 sm:pl-12">
-          <ul className="divide-y rounded-md border text-sm">
-            {p.entries.map((e) => (
-              <li key={e.id} className="flex flex-wrap items-center gap-x-4 gap-y-0.5 px-3 py-2">
-                <span className="w-28 shrink-0">{formatDay(e.work_date)}</span>
-                <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                  {e.kind === "work"
-                    ? e.start_time
-                      ? `${formatTime(e.start_time)} – ${formatTime(e.end_time)}`
-                      : "Worked"
-                    : KIND_LABELS[e.kind]}
-                  {e.late && " · from an earlier period"}
-                </span>
-                <span className="tabular-nums">
-                  {formatHours(e.hours)}
-                  {(p.splits[e.id]?.overtime ?? 0) > 0 && (
-                    <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">
-                      ({formatHours(p.splits[e.id].overtime)} OT)
-                    </span>
-                  )}
-                </span>
-                <StatusPill status={e.status} />
-              </li>
-            ))}
-          </ul>
-
-          <WeekTotals totals={p.totals} />
-
-          <Link href={p.timesheetHref} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-            Open these days in Timesheets
-            <ArrowRight className="size-3.5" aria-hidden />
-          </Link>
-
-          {p.paid ? (
-            <PaidSummary period={p} role={role} />
-          ) : role === "host" && (p.status === "due" || p.status === "overdue") ? (
-            <MarkPaid period={p} today={today} />
-          ) : null}
-        </div>
-      </details>
-    </li>
+    <div className="-mt-2 flex flex-wrap items-center justify-end gap-3">
+      {error && <p className="text-xs text-red-500">{error}</p>}
+      <Button type="button" size="sm" disabled={pending} onClick={approve}>
+        {pending ? "Approving…" : `Approve ${count} ${count === 1 ? "entry" : "entries"}`}
+      </Button>
+    </div>
   );
 }
 

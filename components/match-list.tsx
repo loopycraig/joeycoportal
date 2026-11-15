@@ -21,7 +21,7 @@ export function MatchList({
           <p className="shrink-0 text-xs text-muted-foreground">
             {row.ended_at
               ? `${fmt(row.started_at)} – ${fmt(row.ended_at)}`
-              : `Active since ${fmt(row.started_at)}`}
+              : `Since ${fmt(row.started_at)}`}
           </p>
         </li>
       ))}
