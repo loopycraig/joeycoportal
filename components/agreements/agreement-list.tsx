@@ -1,9 +1,9 @@
-// Pending, Active and Expired agreements. Server-safe.
+// Pending, Active and Expired agreements, as tabs. Server-safe.
 
 import Link from "next/link";
 import { ChevronRight, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SectionHeader } from "@/components/page-parts";
+import { PageTabs } from "@/components/page-tabs";
 import { Pill, type PillTone } from "@/components/status-pill";
 import type { Section } from "@/lib/agreements/fields";
 
@@ -23,22 +23,23 @@ export type ListItem = {
 const SECTIONS: { id: Section; title: string; empty: string }[] = [
   { id: "pending", title: "Pending", empty: "Nothing waiting on anyone." },
   { id: "active", title: "Active", empty: "No signed agreements yet." },
-  { id: "expired", title: "Expired", empty: "" },
+  { id: "expired", title: "Expired", empty: "Nothing has expired." },
 ];
 
+/** One tab per section. Opens on Pending when something's waiting, otherwise Active. */
 export function AgreementList({ items }: { items: ListItem[] }) {
+  const pending = items.filter((i) => i.section === "pending").length;
   return (
-    <>
-      {SECTIONS.map((s) => {
+    <PageTabs
+      defaultTab={pending > 0 ? "pending" : "active"}
+      tabs={SECTIONS.map((s) => {
         const rows = items.filter((i) => i.section === s.id);
-        if (rows.length === 0 && s.id === "expired") return null;
-        return (
-          <section key={s.id} aria-label={s.title}>
-            <SectionHeader>
-              {s.title}
-              {rows.length > 0 && <span className="ml-1.5 tabular-nums">{rows.length}</span>}
-            </SectionHeader>
-            {rows.length === 0 ? (
+        return {
+          id: s.id,
+          label: s.title,
+          count: s.id === "pending" ? rows.length : undefined,
+          content:
+            rows.length === 0 ? (
               <p className="border-b px-4 py-4 text-sm text-muted-foreground sm:px-6">{s.empty}</p>
             ) : (
               <ul className="divide-y border-b">
@@ -59,10 +60,9 @@ export function AgreementList({ items }: { items: ListItem[] }) {
                   </li>
                 ))}
               </ul>
-            )}
-          </section>
-        );
+            ),
+        };
       })}
-    </>
+    />
   );
 }

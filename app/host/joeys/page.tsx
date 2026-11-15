@@ -55,7 +55,12 @@ type MatchRow = {
   employment_ends_on: string | null;
   housing_ends_on: string | null;
   joey: Person;
+  agreements: { kind: string; status: string }[];
 };
+
+/** Pending until both the offer letter and the housing license are signed. */
+const signed = (m: MatchRow) =>
+  ["offer_letter", "housing_license"].every((k) => m.agreements.some((a) => a.kind === k && a.status === "executed"));
 
 const fmt = (d: string) =>
   new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -74,7 +79,9 @@ async function JoeysData() {
 
   const { data, error } = await supabase
     .from("matches")
-    .select("id, started_at, ended_at, employment_ends_on, housing_ends_on, joey:profiles!matches_joey_id_fkey(full_name, email)")
+    .select(
+      "id, started_at, ended_at, employment_ends_on, housing_ends_on, joey:profiles!matches_joey_id_fkey(full_name, email), agreements(kind, status)",
+    )
     .eq("host_id", profile.id)
     .order("started_at", { ascending: false });
 
@@ -133,10 +140,13 @@ async function JoeysData() {
         : null,
   }));
 
+  const isSigned = new Set((data as unknown as MatchRow[]).filter(signed).map((m) => m.id));
+  const current = rows.filter((r) => r.ended === null);
   return (
     <HostJoeys
-      active={rows.filter((r) => r.ended === null)}
-      ended={rows.filter((r) => r.ended !== null)}
+      pending={current.filter((r) => !isSigned.has(r.id))}
+      active={current.filter((r) => isSigned.has(r.id))}
+      expired={rows.filter((r) => r.ended !== null)}
     />
   );
 }

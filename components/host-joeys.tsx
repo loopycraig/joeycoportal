@@ -5,7 +5,8 @@ import { friendlyError } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { EmptyState, PageHeader, SectionHeader, textareaClass } from "@/components/page-parts";
+import { EmptyState, PageHeader, textareaClass } from "@/components/page-parts";
+import { PageTabs } from "@/components/page-tabs";
 import { JoeyTerms, type JoeyTermsInfo } from "@/components/joey-terms";
 import { cancelMatchEnd, endMatchWithNotice } from "@/lib/agreements/actions";
 import { addDays, formatHours, formatShort } from "@/lib/timesheets";
@@ -26,9 +27,33 @@ export type JoeyMatch = {
   ending: { lastDay: string; moveOut: string; canUndo: boolean } | null;
 };
 
-export function HostJoeys({ active, ended }: { active: JoeyMatch[]; ended: JoeyMatch[] }) {
+/**
+ * Pending: matched, but the offer letter and housing license aren't both signed yet.
+ * Active: working under agreed terms. Expired: the match has ended. Opens on Pending when there are
+ * any, otherwise Active.
+ */
+export function HostJoeys({
+  pending,
+  active,
+  expired,
+}: {
+  pending: JoeyMatch[];
+  active: JoeyMatch[];
+  expired: JoeyMatch[];
+}) {
   const [adding, setAdding] = useState(false);
-  const isEmpty = active.length === 0 && ended.length === 0;
+  const isEmpty = pending.length === 0 && active.length === 0 && expired.length === 0;
+
+  const list = (rows: JoeyMatch[], empty: string) =>
+    rows.length === 0 ? (
+      <p className="border-b px-4 py-4 text-sm text-muted-foreground sm:px-6">{empty}</p>
+    ) : (
+      <ul className="divide-y border-b">
+        {rows.map((m) => (
+          <JoeyRow key={m.id} match={m} />
+        ))}
+      </ul>
+    );
 
   return (
     <>
@@ -46,32 +71,24 @@ export function HostJoeys({ active, ended }: { active: JoeyMatch[]; ended: JoeyM
 
       {adding && <AddJoeyForm onDone={() => setAdding(false)} />}
 
-      {isEmpty && !adding && (
+      {isEmpty && !adding ? (
         <EmptyState title="No Joeys yet">
           Add a Joey by email. They need to sign up and choose Joey first.
         </EmptyState>
-      )}
-
-      {active.length > 0 && (
-        <>
-          <SectionHeader>Active</SectionHeader>
-          <ul className="divide-y border-b">
-            {active.map((m) => (
-              <JoeyRow key={m.id} match={m} />
-            ))}
-          </ul>
-        </>
-      )}
-
-      {ended.length > 0 && (
-        <>
-          <SectionHeader>Ended</SectionHeader>
-          <ul className="divide-y border-b">
-            {ended.map((m) => (
-              <JoeyRow key={m.id} match={m} />
-            ))}
-          </ul>
-        </>
+      ) : (
+        <PageTabs
+          defaultTab={pending.length > 0 ? "pending" : "active"}
+          tabs={[
+            {
+              id: "pending",
+              label: "Pending",
+              count: pending.length,
+              content: list(pending, "No Joeys waiting on signed agreements."),
+            },
+            { id: "active", label: "Active", content: list(active, "No active Joeys.") },
+            { id: "expired", label: "Expired", content: list(expired, "No past Joeys.") },
+          ]}
+        />
       )}
     </>
   );
