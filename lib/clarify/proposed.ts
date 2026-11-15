@@ -1,6 +1,6 @@
 // Proposed Joeys: the candidates the JoeyCo team has lined up for a Host, read from Clarify before
 // any match exists in the portal. In Clarify a Match is a deal; its Host is the c_host record in
-// host_id and its candidates are the c_joey records in candidate_joeys. Read-only.
+// host_id (found by the c_host email) and its candidates are the c_joey records in candidate_joeys. Read-only.
 
 import { clarifyConfigured, getRecord, listResources, readSelect, type ClarifyRecord } from "@/lib/clarify/client";
 
@@ -84,34 +84,38 @@ export async function getProposedJoeys(hostEmail: string): Promise<ProposedResul
   if (!clarifyConfigured()) return { configured: false };
   const email = hostEmail.trim().toLowerCase();
 
-  // Filter on the Host's email through the host_id link. Contains, because the team types emails
-  // with any capitalization; the exact (case-insensitive) check is done below.
-  const page = await listResources("deal", {
-    "filter[host_id.email][Contains]": email,
-    "filter[stage]": OPEN_STAGES.join(","),
-    include: "host_id,candidate_joeys",
-  });
+  // 1. The Host's c_host record(s). Contains, because the team types emails with any capitalization;
+  //    the exact, case-insensitive check is done here. (Clarify can't filter deals on host_id.email.)
+  const hosts = await listResources("c_host", { "filter[email][Contains]": email }, 10);
+  const hostIds = hosts.data.filter((h) => text(h.attributes.email)?.toLowerCase() === email).map((h) => h.id);
+  if (hostIds.length === 0) return { configured: true, joeys: [] };
 
-  const known = new Map<string, ClarifyRecord>();
-  for (const r of page.included ?? []) known.set(r.id, r);
-  for (const deal of page.data) {
-    for (const r of [...embedded(deal, "host_id"), ...embedded(deal, "candidate_joeys")]) known.set(r.id, r);
-  }
-
-  // Anything Clarify linked but didn't send along, fetched one by one.
-  const fetchMissing = async (object: string, ids: string[]) =>
-    Promise.all(
-      ids.filter((id) => !known.get(id)?.attributes).map(async (id) => known.set(id, await getRecord(object, id))),
-    );
-
-  const deals = page.data.filter((d) => OPEN_STAGES.includes(readSelect(d.attributes.stage) ?? ""));
-  await fetchMissing("c_host", [...new Set(deals.flatMap((d) => relatedIds(d, "host_id")))]);
-  const mine = deals.filter((d) =>
-    relatedIds(d, "host_id").some((id) => text(known.get(id)?.attributes.email)?.toLowerCase() === email),
+  // 2. Their open Matches, with the candidate Joeys sent along in `included`.
+  const pages = await Promise.all(
+    hostIds.map((id) =>
+      listResources("deal", {
+        "filter[host_id]": id,
+        "filter[stage]": OPEN_STAGES.join(","),
+        include: "candidate_joeys",
+      }),
+    ),
   );
 
-  const joeyIds = [...new Set(mine.flatMap((d) => relatedIds(d, "candidate_joeys")))];
-  await fetchMissing("c_joey", joeyIds);
+  const known = new Map<string, ClarifyRecord>();
+  for (const page of pages) {
+    for (const r of page.included ?? []) known.set(r.id, r);
+    for (const deal of page.data) for (const r of embedded(deal, "candidate_joeys")) known.set(r.id, r);
+  }
+
+  const deals = pages
+    .flatMap((p) => p.data)
+    .filter((d) => OPEN_STAGES.includes(readSelect(d.attributes.stage) ?? ""));
+  const joeyIds = [...new Set(deals.flatMap((d) => relatedIds(d, "candidate_joeys")))];
+
+  // Anything Clarify linked but didn't send along, fetched one by one.
+  await Promise.all(
+    joeyIds.filter((id) => !known.get(id)?.attributes).map(async (id) => known.set(id, await getRecord("c_joey", id))),
+  );
 
   const joeys = joeyIds
     .map((id) => known.get(id))

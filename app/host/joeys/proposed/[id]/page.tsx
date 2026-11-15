@@ -1,8 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { PageHeader } from "@/components/page-parts";
+import { EmptyState, PageHeader } from "@/components/page-parts";
 import { JoeyAvatar } from "@/components/host-joeys";
 import { getProfile } from "@/lib/profile";
 import { getProposedJoeys } from "@/lib/clarify/proposed";
@@ -37,7 +36,16 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
   // Only Joeys proposed to this Host on an open Match can be opened, so look it up from that list.
   const res = await getProposedJoeys(profile.email);
   const joey = res.configured ? res.joeys.find((j) => j.id === id) : undefined;
-  if (!joey) notFound();
+  if (!joey) {
+    return (
+      <>
+        <Header title="Proposed Joey" />
+        <EmptyState title="This Joey isn't on your list">
+          They may have been matched elsewhere or taken off your search. Your current list is on Matches.
+        </EmptyState>
+      </>
+    );
+  }
 
   const facts: [string, string | null][] = [
     ["School", joey.school],
