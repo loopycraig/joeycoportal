@@ -10,7 +10,9 @@ import { PageTabs } from "@/components/page-tabs";
 import { JoeyTerms, type JoeyTermsInfo } from "@/components/joey-terms";
 import { cancelMatchEnd, endMatchWithNotice } from "@/lib/agreements/actions";
 import { addDays, formatHours, formatShort } from "@/lib/timesheets";
+import type { ClarifyJoey, ClarifyMatch } from "@/lib/clarify/matches";
 import { Plus } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -27,28 +29,48 @@ export type JoeyMatch = {
   ending: { lastDay: string; moveOut: string; canUndo: boolean } | null;
 };
 
+type ClarifyLists = { pending: ClarifyMatch[]; active: ClarifyMatch[]; completed: ClarifyMatch[] };
+
 /**
- * Pending: matched, but the offer letter and housing license aren't both signed yet.
- * Active: working under agreed terms. Expired: the match has ended. Opens on Pending when there are
- * any, otherwise Active.
+ * Proposed: Joeys the JoeyCo team has lined up while the Match is in Search (from Clarify).
+ * Pending: a Joey is picked (Contracting in Clarify), or matched in the portal but the offer letter
+ * and housing license aren't both signed yet. Active: Matched in Clarify, or working under signed
+ * agreements. Completed: Completed in Clarify, or the portal match has ended.
+ * A Joey with a portal match shows as that match; Clarify-only rows are simpler and link to the profile.
+ * Opens on Pending when there are any (something is waiting on someone), then Proposed when there are
+ * Joeys to look at, otherwise Active.
  */
 export function HostJoeys({
+  proposed,
+  proposedNote,
+  clarify,
   pending,
   active,
-  expired,
+  completed,
 }: {
+  proposed: ClarifyJoey[];
+  /** Shown instead of the list when Clarify couldn't be read. */
+  proposedNote: string | null;
+  clarify: ClarifyLists;
   pending: JoeyMatch[];
   active: JoeyMatch[];
-  expired: JoeyMatch[];
+  completed: JoeyMatch[];
 }) {
   const [adding, setAdding] = useState(false);
-  const isEmpty = pending.length === 0 && active.length === 0 && expired.length === 0;
+  const pendingCount = pending.length + clarify.pending.length;
+  const isEmpty =
+    proposed.length === 0 &&
+    !proposedNote &&
+    [pending, active, completed, clarify.pending, clarify.active, clarify.completed].every((l) => l.length === 0);
 
-  const list = (rows: JoeyMatch[], empty: string) =>
-    rows.length === 0 ? (
+  const list = (rows: JoeyMatch[], fromClarify: ClarifyMatch[], tab: keyof ClarifyLists, empty: string) =>
+    rows.length === 0 && fromClarify.length === 0 ? (
       <p className="border-b px-4 py-4 text-sm text-muted-foreground sm:px-6">{empty}</p>
     ) : (
       <ul className="divide-y border-b">
+        {fromClarify.map((m) => (
+          <ClarifyMatchRow key={m.dealId + m.joey.id} match={m} tab={tab} />
+        ))}
         {rows.map((m) => (
           <JoeyRow key={m.id} match={m} />
         ))}
@@ -58,7 +80,7 @@ export function HostJoeys({
   return (
     <>
       <PageHeader
-        title="My Joeys"
+        title="Matches"
         actions={
           !adding && (
             <Button size="sm" onClick={() => setAdding(true)}>
@@ -72,25 +94,123 @@ export function HostJoeys({
       {adding && <AddJoeyForm onDone={() => setAdding(false)} />}
 
       {isEmpty && !adding ? (
-        <EmptyState title="No Joeys yet">
-          Add a Joey by email. They need to sign up and choose Joey first.
+        <EmptyState title="No matches yet">
+          Joeys the JoeyCo team proposes for you show up here. If you already have a Joey, add them by email. They
+          need to sign up and choose Joey first.
         </EmptyState>
       ) : (
         <PageTabs
-          defaultTab={pending.length > 0 ? "pending" : "active"}
+          defaultTab={pendingCount > 0 ? "pending" : proposed.length > 0 ? "proposed" : "active"}
           tabs={[
+            {
+              id: "proposed",
+              label: "Proposed",
+              count: proposed.length,
+              content: <ProposedList joeys={proposed} note={proposedNote} />,
+            },
             {
               id: "pending",
               label: "Pending",
-              count: pending.length,
-              content: list(pending, "No Joeys waiting on signed agreements."),
+              count: pendingCount,
+              content: list(pending, clarify.pending, "pending", "No Joeys waiting on agreements."),
             },
-            { id: "active", label: "Active", content: list(active, "No active Joeys.") },
-            { id: "expired", label: "Expired", content: list(expired, "No past Joeys.") },
+            { id: "active", label: "Active", content: list(active, clarify.active, "active", "No active Joeys.") },
+            {
+              id: "completed",
+              label: "Completed",
+              content: list(completed, clarify.completed, "completed", "No completed matches."),
+            },
           ]}
         />
       )}
     </>
+  );
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("");
+}
+
+export function JoeyAvatar({ name, className }: { name: string; className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={`flex shrink-0 items-center justify-center rounded-full bg-muted font-medium text-muted-foreground ${className ?? "size-10 text-sm"}`}
+    >
+      {initials(name)}
+    </span>
+  );
+}
+
+const CLARIFY_STATUS: Record<keyof ClarifyLists, string> = {
+  pending: "JoeyCo is preparing the agreements",
+  active: "Matched",
+  completed: "Completed",
+};
+
+/** A Joey picked for a Match in Clarify who isn't set up in the portal yet. */
+function ClarifyMatchRow({ match, tab }: { match: ClarifyMatch; tab: keyof ClarifyLists }) {
+  const j = match.joey;
+  const status =
+    match.date && tab !== "pending"
+      ? `${CLARIFY_STATUS[tab]} ${tab === "active" ? "since" : "on"} ${formatShort(match.date)}`
+      : CLARIFY_STATUS[tab];
+  return (
+    <li id={`joey-${j.id}`} className="scroll-mt-4 text-sm target:bg-accent/30">
+      <Link
+        href={`/host/joeys/profile/${j.id}`}
+        className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 hover:bg-accent/40 sm:px-6"
+      >
+        <JoeyAvatar name={j.name} className="size-8 text-xs" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate">{j.name}</p>
+          {j.school && <p className="truncate text-xs text-muted-foreground">{j.school}</p>}
+        </div>
+        <p className="shrink-0 text-xs text-muted-foreground">{status}</p>
+      </Link>
+    </li>
+  );
+}
+
+function ProposedList({ joeys, note }: { joeys: ClarifyJoey[]; note: string | null }) {
+  if (note || joeys.length === 0) {
+    return (
+      <p className="border-b px-4 py-4 text-sm text-muted-foreground sm:px-6">
+        {note ?? "No Joeys proposed yet. The JoeyCo team adds candidates here as they find them."}
+      </p>
+    );
+  }
+  return (
+    <ul className="grid gap-3 p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">
+      {joeys.map((j) => (
+        <li key={j.id}>
+          <Link
+            href={`/host/joeys/profile/${j.id}`}
+            className="flex h-full flex-col gap-3 rounded-lg border bg-card p-4 text-sm transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <div className="flex items-center gap-3">
+              <JoeyAvatar name={j.name} />
+              <div className="min-w-0">
+                <p className="truncate font-medium">{j.name}</p>
+                {j.school && <p className="truncate text-xs text-muted-foreground">{j.school}</p>}
+              </div>
+            </div>
+            {j.bio ? (
+              <p className="line-clamp-4 text-muted-foreground">{j.bio}</p>
+            ) : (
+              <p className="text-muted-foreground italic">No bio yet.</p>
+            )}
+            {j.cities.length > 0 && (
+              <p className="mt-auto text-xs text-muted-foreground">Prefers {j.cities.join(", ")}</p>
+            )}
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 

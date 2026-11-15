@@ -1,6 +1,6 @@
 "use client";
 
-// A Joey's key contract terms on My Joeys, each with Change. Rate and rent changes are signed
+// A Joey's key contract terms on Matches, each with Change. Rate and rent changes are signed
 // amendments (an open one is reopened rather than duplicated); the pay schedule sends a notice.
 
 import { createAgreement } from "@/lib/agreements/actions";

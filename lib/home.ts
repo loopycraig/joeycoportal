@@ -237,7 +237,7 @@ export async function getHostHome(): Promise<HomeCardData[]> {
   ];
   if (statement) pay.push(statement);
 
-  // My Joeys: one row each, as on My Joeys.
+  // Matches: one row per Joey, as on Matches.
   const joeys: HomeRow[] = matches.map((m) => {
     const ending = m.employment_ends_on && m.housing_ends_on;
     const finished = ending && today >= m.employment_ends_on!;
@@ -278,7 +278,7 @@ export async function getHostHome(): Promise<HomeCardData[]> {
     },
     { title: "Payments", href: "/host/payments", rows: pay, empty: "No pay periods yet." },
     { title: "Agreements", href: "/host/agreements", rows: agreements, empty: "No agreements waiting on anyone." },
-    { title: "My Joeys", href: "/host/joeys", rows: joeys, empty: "" },
+    { title: "Matches", href: "/host/joeys", rows: joeys, empty: "" },
   ];
 }
 
