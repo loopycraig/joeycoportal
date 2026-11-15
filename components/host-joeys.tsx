@@ -20,6 +20,8 @@ export type JoeyMatch = {
   id: string;
   name: string;
   email: string;
+  /** JoeyCo set up their account from the Clarify match; they haven't signed up yet. */
+  notSignedUp: boolean;
   started: string; // pre-formatted on the server
   ended: string | null;
   terms: JoeyTermsInfo;
@@ -294,7 +296,10 @@ function JoeyRow({ match }: { match: JoeyMatch }) {
         />
         <div className="min-w-0 flex-1">
           <p className="truncate">{match.name}</p>
-          <p className="truncate text-xs text-muted-foreground">{match.email}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {match.email}
+            {match.notSignedUp && " · hasn't signed up yet, so they can't sign agreements"}
+          </p>
         </div>
         <p className="shrink-0 text-xs text-muted-foreground">
           {match.ended ? `${match.started} – ${match.ended}` : `Since ${match.started}`}

@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { friendlyError } from "@/lib/errors";
+import { claimPlaceholder } from "@/lib/auth/claim";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +35,7 @@ export function SignUpForm({
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -42,6 +43,14 @@ export function SignUpForm({
           emailRedirectTo: `${window.location.origin}/auth/callback?next=/portal`,
         },
       });
+      // The email already has an account. If JoeyCo made it as a placeholder from their match, send
+      // them a link to set their password. (Supabase reports this as an error, or, with email
+      // confirmation on, as a user with no identities.)
+      const taken = error?.code === "user_already_exists" || (!error && data.user?.identities?.length === 0);
+      if (taken && (await claimPlaceholder(email))) {
+        router.push("/auth/claim-sent");
+        return;
+      }
       if (error) throw error;
       router.push("/auth/sign-up-success");
     } catch (error: unknown) {

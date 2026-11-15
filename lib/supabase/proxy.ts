@@ -47,9 +47,14 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
+  // API routes (cron jobs, Clarify webhooks) are called without a session and check their own secret.
+  const selfAuthenticated =
+    request.nextUrl.pathname.startsWith("/api/") || request.nextUrl.pathname.startsWith("/clarify/");
+
   if (
     request.nextUrl.pathname !== "/" &&
     !user &&
+    !selfAuthenticated &&
     !request.nextUrl.pathname.startsWith("/login") &&
     !request.nextUrl.pathname.startsWith("/auth")
   ) {

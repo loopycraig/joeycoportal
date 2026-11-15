@@ -57,7 +57,7 @@ type MatchRow = {
   ended_at: string | null;
   employment_ends_on: string | null;
   housing_ends_on: string | null;
-  joey: Person;
+  joey: Person & { is_placeholder: boolean };
   agreements: { kind: string; status: string }[];
 };
 
@@ -114,7 +114,7 @@ async function JoeysData() {
   const { data, error } = await supabase
     .from("matches")
     .select(
-      "id, joey_id, started_at, ended_at, employment_ends_on, housing_ends_on, joey:profiles!matches_joey_id_fkey(full_name, email), agreements(kind, status)",
+      "id, joey_id, started_at, ended_at, employment_ends_on, housing_ends_on, joey:profiles!matches_joey_id_fkey(full_name, email, is_placeholder), agreements(kind, status)",
     )
     .eq("host_id", profile.id)
     .order("started_at", { ascending: false });
@@ -147,6 +147,7 @@ async function JoeysData() {
     id: m.id,
     name: personName(m.joey),
     email: m.joey?.email ?? "",
+    notSignedUp: m.joey?.is_placeholder ?? false,
     started: fmt(m.started_at),
     ended: m.ended_at ? fmt(m.ended_at) : null,
     terms: {

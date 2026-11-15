@@ -110,7 +110,7 @@ function embedded(record: Deal, field: string): ClarifyRecord[] {
 }
 
 /** The c_host email field sometimes holds two addresses ("a@x.com, b@y.com"). */
-const emailsOf = (v: unknown) =>
+export const emailsOf = (v: unknown) =>
   (text(v) ?? "")
     .toLowerCase()
     .split(/[\s,;]+/)
