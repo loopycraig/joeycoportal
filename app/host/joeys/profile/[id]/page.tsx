@@ -4,11 +4,11 @@ import { ArrowLeft } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/page-parts";
 import { JoeyAvatar } from "@/components/host-joeys";
 import { getProfile } from "@/lib/profile";
-import { getProposedJoeys } from "@/lib/clarify/proposed";
+import { allJoeys, getClarifyMatches } from "@/lib/clarify/matches";
 
 export default function ProposedJoeyPage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <Suspense fallback={<Header title="Proposed Joey" />}>
+    <Suspense fallback={<Header title="Joey" />}>
       <View params={params} />
     </Suspense>
   );
@@ -33,13 +33,14 @@ function Header({ title }: { title: string }) {
 
 async function View({ params }: { params: Promise<{ id: string }> }) {
   const [{ id }, profile] = await Promise.all([params, getProfile()]);
-  // Only Joeys proposed to this Host on an open Match can be opened, so look it up from that list.
-  const res = await getProposedJoeys(profile.email);
-  const joey = res.configured ? res.joeys.find((j) => j.id === id) : undefined;
+  // Only Joeys on this Host's own Matches can be opened, so look it up from those.
+  const res = await getClarifyMatches(profile.email);
+  const joey = res.configured ? allJoeys(res).find((j) => j.id === id) : undefined;
+  const proposed = res.configured && res.proposed.some((j) => j.id === id);
   if (!joey) {
     return (
       <>
-        <Header title="Proposed Joey" />
+        <Header title="Joey" />
         <EmptyState title="This Joey isn't on your list">
           They may have been matched elsewhere or taken off your search. Your current list is on Matches.
         </EmptyState>
@@ -63,7 +64,7 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
           <JoeyAvatar name={joey.name} className="size-14 text-base" />
           <div>
             <p className="text-base font-medium">{joey.name}</p>
-            <p className="text-muted-foreground">Proposed by the JoeyCo team</p>
+            <p className="text-muted-foreground">{proposed ? "Proposed by the JoeyCo team" : "Your Joey"}</p>
           </div>
         </div>
 
@@ -104,9 +105,11 @@ async function View({ params }: { params: Promise<{ id: string }> }) {
           </section>
         )}
 
-        <p className="text-muted-foreground">
-          Want to meet {joey.name.split(" ")[0]}? Reply to your JoeyCo contact and they&apos;ll set up an introduction.
-        </p>
+        {proposed && (
+          <p className="text-muted-foreground">
+            Want to meet {joey.name.split(" ")[0]}? Reply to your JoeyCo contact and they&apos;ll set up an introduction.
+          </p>
+        )}
       </div>
     </>
   );
