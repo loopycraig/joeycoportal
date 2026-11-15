@@ -31,7 +31,7 @@ export const DISCLOSURES: Disclosure[] = [
     id: "bg",
     name: "Background check disclosure and authorization",
     title: ["Disclosure Regarding Background Investigation"],
-    version: "federal-2026-11",
+    version: "federal-2026-11-09",
     body: [
       {
         kind: "p",
@@ -43,7 +43,7 @@ export const DISCLOSURES: Disclosure[] = [
       },
       {
         kind: "p",
-        text: "The report will be prepared by Private Eyes Screening Group, 9080 Double Diamond Parkway Unit C, Reno, NV 89521 or Checkr, Inc., 1 Montgomery Street, Suite 2400, San Francisco, CA 94104, https://checkr.com/.",
+        text: "The report will be prepared by Private Eyes Screening Group, 9080 Double Diamond Parkway, Unit C, Reno, NV 89521, (877) 292-3331, https://www.privateeyesbackgroundchecks.com/privacy-policy/.",
       },
     ],
     authorization:
@@ -53,7 +53,7 @@ export const DISCLOSURES: Disclosure[] = [
     id: "ca",
     name: "California investigative consumer report disclosure and authorization",
     title: ["California Disclosure and Authorization", "Regarding Investigative Consumer Report"],
-    version: "ca-icra-2026-11",
+    version: "ca-icra-2026-11-09",
     body: [
       {
         kind: "p",
@@ -75,13 +75,13 @@ export const DISCLOSURES: Disclosure[] = [
         kind: "item",
         n: 3,
         heading: "The agency preparing the report.",
-        text: "The report will be prepared by Private Eyes Screening Group, 9080 Double Diamond Parkway Unit C, Reno, NV 89521 or Checkr, Inc. (“Checkr”), 1 Montgomery Street, Suite 2400, San Francisco, CA 94104. Checkr’s privacy practices with respect to the preparation and processing of investigative consumer reports are described at https://checkr.com/legal/privacy-policy.",
+        text: "The report will be prepared by Private Eyes Screening Group (“Private Eyes”), 9080 Double Diamond Parkway, Unit C, Reno, NV 89521, (877) 292-3331. Its privacy practices with respect to the preparation and processing of investigative consumer reports are described at https://www.privateeyesbackgroundchecks.com/privacy-policy/.",
       },
       {
         kind: "item",
         n: 4,
         heading: "Your right to see your file.",
-        text: "You have the right under Civil Code section 1786.22 to inspect the files Private Eyes Screening Group and/or Checkr maintains about you during normal business hours and on reasonable notice. You may do so in person, if you give proper identification and pay the costs of duplicating the file; by telephone, if you have made a written request and paid any applicable charges, with the telephone charges prepaid by or charged to you; or by asking for a copy to be sent to a specified addressee. Private Eyes Screening Group and/or Checkr must provide trained personnel to explain the file to you, and you may be accompanied by one other person of your choosing, who must give proper identification. That person may be required to provide reasonable written authorization from you permitting them to accompany you or to receive the information on your behalf.",
+        text: "You have the right under Civil Code section 1786.22 to inspect the files Private Eyes maintains about you during normal business hours and on reasonable notice. You may do so in person, if you give proper identification and pay the costs of duplicating the file; by telephone, if you have made a written request and paid any applicable charges, with the telephone charges prepaid by or charged to you; or by asking for a copy to be sent to a specified addressee. Private Eyes must provide trained personnel to explain the file to you, and you may be accompanied by one other person of your choosing, who must give proper identification. That person may be required to provide reasonable written authorization from you permitting them to accompany you or to receive the information on your behalf.",
       },
       {
         kind: "item",
