@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Pill, StatusPill } from "@/components/status-pill";
 import { EmptyState, PageHeader, SectionHeader, textareaClass } from "@/components/page-parts";
 import { WeekTotals } from "@/components/timesheets/week-totals";
+import { PageTabs } from "@/components/page-tabs";
 import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -59,12 +60,12 @@ export function HostTimesheets({
   const review = periods.filter((p) => has(p, "submitted")).reverse();
   const waiting = periods.filter((p) => !has(p, "submitted") && has(p, "changes_requested") && !p.paidOn);
   const ready = periods.filter((p) => !has(p, "submitted") && !has(p, "changes_requested") && !p.paidOn);
-  const paid = periods.filter((p) => !has(p, "submitted") && p.paidOn).slice(0, 6);
+  const paid = periods.filter((p) => !has(p, "submitted") && p.paidOn);
 
   if (periods.length === 0) {
     return (
       <>
-        <PageHeader title="Timesheets" />
+        <PageHeader title="Timecards" />
         <EmptyState title="Nothing to review">
           When your Joey submits their hours, each pay period shows up here for you to approve.
         </EmptyState>
@@ -72,26 +73,42 @@ export function HostTimesheets({
     );
   }
 
-  const section = (title: string, list: HostPeriod[]) =>
-    list.length > 0 && (
-      <>
-        <SectionHeader>{title}</SectionHeader>
-        {list.map((p) => (
-          <PeriodCard key={p.id} period={p} today={today} splits={splits} />
-        ))}
-      </>
-    );
+  const cards = (list: HostPeriod[]) =>
+    list.map((p) => <PeriodCard key={p.id} period={p} today={today} splits={splits} />);
+  const empty = (text: string) => <p className="border-b px-4 py-4 text-sm text-muted-foreground sm:px-6">{text}</p>;
+  const pending = review.length + waiting.length;
 
   return (
     <>
-      <PageHeader title="Timesheets" />
-      {review.length === 0 && (
-        <p className="border-b px-4 py-4 text-sm text-muted-foreground sm:px-6">You&apos;re all caught up.</p>
-      )}
-      {section("Waiting for your approval", review)}
-      {section("Approved, not paid yet", ready)}
-      {section("Waiting on your Joey", waiting)}
-      {section("Paid", paid)}
+      <PageHeader title="Timecards" />
+      <PageTabs
+        defaultTab={pending > 0 ? "pending" : ready.length > 0 ? "approved" : "paid"}
+        tabs={[
+          {
+            id: "pending",
+            label: "Pending",
+            count: pending,
+            content:
+              pending === 0 ? (
+                empty("You're all caught up.")
+              ) : (
+                <>
+                  {review.length > 0 && <SectionHeader>Waiting for your approval</SectionHeader>}
+                  {cards(review)}
+                  {waiting.length > 0 && <SectionHeader>Sent back to your Joey</SectionHeader>}
+                  {cards(waiting)}
+                </>
+              ),
+          },
+          {
+            id: "approved",
+            label: "Approved",
+            count: ready.length,
+            content: ready.length === 0 ? empty("Nothing approved and waiting to be paid.") : cards(ready),
+          },
+          { id: "paid", label: "Paid", content: paid.length === 0 ? empty("No paid periods yet.") : cards(paid) },
+        ]}
+      />
     </>
   );
 }

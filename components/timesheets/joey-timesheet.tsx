@@ -153,7 +153,7 @@ export function JoeyTimesheet({
   return (
     <>
       <PageHeader
-        title="Timesheets"
+        title="Timecards"
         actions={
           <div className="flex items-center gap-1">
             {week !== thisWeek && (

@@ -17,7 +17,7 @@ type SearchParams = Promise<{ match?: string; week?: string }>;
 
 export default function JoeyTimesheetPage({ searchParams }: { searchParams: SearchParams }) {
   return (
-    <Suspense fallback={<PageHeader title="Timesheets" />}>
+    <Suspense fallback={<PageHeader title="Timecards" />}>
       <TimesheetData searchParams={searchParams} />
     </Suspense>
   );
@@ -47,7 +47,7 @@ async function TimesheetData({ searchParams }: { searchParams: SearchParams }) {
     ending: m.employment_ends_on && m.housing_ends_on ? { lastDay: m.employment_ends_on, moveOut: m.housing_ends_on } : null,
   }));
   const match = matches.find((m) => m.id === matchParam) ?? matches[0];
-  if (!match) return <PageHeader title="Timesheets" />;
+  if (!match) return <PageHeader title="Timecards" />;
 
   const from = addDays(mondayOf(today), -7 * WEEKS_BACK);
   const to = addDays(mondayOf(today), 7 * WEEKS_AHEAD + 6);

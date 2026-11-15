@@ -20,7 +20,7 @@ async function JoeyShell({ children }: { children: React.ReactNode }) {
 
   const portal = [
     { href: "/joey", label: "Home" },
-    { href: "/joey/timesheets", label: "Timesheets" },
+    { href: "/joey/timesheets", label: "Timecards" },
     { href: "/joey/payments", label: "Payments" },
   ];
   const agreements = { href: "/joey/agreements", label: "Agreements" };
