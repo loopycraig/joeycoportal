@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/profile";
 import { PageHeader } from "@/components/page-parts";
-import { JoeyTimesheet } from "@/components/timesheets/joey-timesheet";
+import { JoeyTimesheet, type PayPeriod } from "@/components/timesheets/joey-timesheet";
 import { personName, type Person } from "@/lib/people";
 import { ENTRY_FIELDS, addDays, mondayOf, type PeriodSpan, type TimeEntry } from "@/lib/timesheets";
 import {
@@ -52,7 +52,7 @@ async function TimesheetData({ searchParams }: { searchParams: SearchParams }) {
   const from = addDays(mondayOf(today), -7 * WEEKS_BACK);
   const to = addDays(mondayOf(today), 7 * WEEKS_AHEAD + 6);
 
-  const [entries, periods, rates, balances, schedules, offer] = await Promise.all([
+  const [entries, periods, payPeriods, rates, balances, schedules, offer] = await Promise.all([
     supabase
       .from("time_entries")
       .select(ENTRY_FIELDS)
@@ -62,6 +62,14 @@ async function TimesheetData({ searchParams }: { searchParams: SearchParams }) {
       .order("work_date")
       .order("start_time"),
     supabase.rpc("pay_periods_between", { p_match: match.id, p_from: from, p_to: to }),
+    // For the Approved and Paid tabs: each period's paid status.
+    supabase
+      .from("pay_periods")
+      .select("id, period_start, period_end, payday, paid_on, paid_amount_cents")
+      .eq("match_id", match.id)
+      .gte("period_end", from)
+      .lte("period_start", today)
+      .order("period_start", { ascending: false }),
     getRates(supabase, [match.id]),
     getPtoBalances(supabase, [match.id]),
     getPaySchedules(supabase, [match.id], today),
@@ -69,6 +77,7 @@ async function TimesheetData({ searchParams }: { searchParams: SearchParams }) {
   ]);
   if (entries.error) throw new Error(entries.error.message);
   if (periods.error) throw new Error(periods.error.message);
+  if (payPeriods.error) throw new Error(payPeriods.error.message);
 
   return (
     <JoeyTimesheet
@@ -82,6 +91,7 @@ async function TimesheetData({ searchParams }: { searchParams: SearchParams }) {
       otherMatches={matches.filter((m) => m.id !== match.id)}
       entries={entries.data as unknown as TimeEntry[]}
       periods={periods.data as PeriodSpan[]}
+      payPeriods={payPeriods.data as PayPeriod[]}
       rates={rates.get(match.id) ?? []}
       ptoBalance={balances.get(match.id) ?? 0}
       hasPtoPolicy={offer.ptoAmount !== null}

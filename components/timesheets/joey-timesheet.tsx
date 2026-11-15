@@ -8,6 +8,7 @@ import {
   addDays,
   formatDay,
   formatHours,
+  formatMoney,
   formatRange,
   formatShort,
   formatTime,
@@ -16,6 +17,7 @@ import {
   totalsFor,
   weekDates,
   weekdayIndex,
+  type EntrySplit,
   type PeriodSpan,
   type Rate,
   type ScheduledDay,
@@ -28,6 +30,7 @@ import { StatusPill } from "@/components/status-pill";
 import { PageHeader } from "@/components/page-parts";
 import { EntryForm } from "@/components/timesheets/entry-form";
 import { WeekTotals } from "@/components/timesheets/week-totals";
+import { PageTabs } from "@/components/page-tabs";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
@@ -39,6 +42,16 @@ type MatchInfo = {
   hostId: string;
   hostName: string;
   ending: { lastDay: string; moveOut: string } | null;
+};
+
+/** A pay period with its paid status, for the Approved and Paid tabs. */
+export type PayPeriod = {
+  id: string;
+  period_start: string;
+  period_end: string;
+  payday: string;
+  paid_on: string | null;
+  paid_amount_cents: number | null;
 };
 
 const submittable = (e: TimeEntry, today: string) =>
@@ -55,6 +68,7 @@ export function JoeyTimesheet({
   otherMatches,
   entries,
   periods,
+  payPeriods,
   rates,
   ptoBalance,
   hasPtoPolicy,
@@ -71,6 +85,7 @@ export function JoeyTimesheet({
   otherMatches: MatchInfo[];
   entries: TimeEntry[];
   periods: PeriodSpan[];
+  payPeriods: PayPeriod[];
   rates: Rate[];
   /** Approved balance from the ledger. */
   ptoBalance: number;
@@ -107,6 +122,18 @@ export function JoeyTimesheet({
     return submittable(e, today) && p && p.period_end < today;
   });
   const changesRequested = entries.filter((e) => e.status === "changes_requested");
+
+  // Pending: submitted days waiting on the Host. Approved: every day approved, not paid yet.
+  // Paid: the Host marked the period paid.
+  const inPeriod = (p: PayPeriod) => entries.filter((e) => e.pay_period_id === p.id);
+  const pendingPeriods = payPeriods.filter((p) => !p.paid_on && inPeriod(p).some((e) => e.status === "submitted"));
+  const approvedPeriods = payPeriods.filter(
+    (p) => !p.paid_on && inPeriod(p).length > 0 && inPeriod(p).every((e) => e.status === "approved"),
+  );
+  const paidPeriods = payPeriods.filter((p) => p.paid_on && inPeriod(p).length > 0);
+  const needsYou = new Set([...overdue, ...changesRequested].map((e) => e.id)).size;
+  const weekLink = (d: string) =>
+    `/joey/timesheets?week=${mondayOf(d)}${otherMatches.length > 0 ? `&match=${match.id}` : ""}`;
 
   const fillable = schedule
     ? days.filter((d, i) => schedule[i]?.hours && !weekEntries.some((e) => e.work_date === d) && !periodFor(d)?.handed_off)
@@ -150,68 +177,36 @@ export function JoeyTimesheet({
   const canGoForward = addDays(week, 7) <= windowEnd;
   const thisWeek = mondayOf(today);
 
-  return (
+  // In Progress: the week being filled in. Days are entered, fixed and submitted here.
+  const inProgress = (
     <>
-      <PageHeader
-        title="Timecards"
-        actions={
-          <div className="flex items-center gap-1">
-            {week !== thisWeek && (
-              <Button variant="ghost" size="sm" onClick={() => setWeek(thisWeek)}>
-                This week
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8"
-              aria-label="Previous week"
-              disabled={!canGoBack}
-              onClick={() => setWeek(addDays(week, -7))}
-            >
-              <ChevronLeft />
-            </Button>
-            <span className="min-w-28 text-center text-sm tabular-nums">{formatRange(days[0], days[6])}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8"
-              aria-label="Next week"
-              disabled={!canGoForward}
-              onClick={() => setWeek(addDays(week, 7))}
-            >
-              <ChevronRight />
-            </Button>
-          </div>
-        }
-      />
-
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b px-4 py-2 text-xs text-muted-foreground sm:px-6">
-        <span>
-          Host: <span className="text-foreground">{match.hostName}</span>
-          {otherMatches.map((m) => (
-            <Link key={m.id} href={`/joey/timesheets?match=${m.id}`} className="ml-2 underline-offset-2 hover:underline">
-              Switch to {m.hostName}
-            </Link>
-          ))}
-        </span>
-        <span>
-          Paid {SCHEDULE_LABELS[paySchedule.current].toLowerCase()}
-          {paySchedule.next && (
-            <> · {SCHEDULE_LABELS[paySchedule.next.kind].toLowerCase()} from {formatShort(paySchedule.next.from)}</>
-          )}
-        </span>
-        <span>
-          PTO:{" "}
-          {hasPtoPolicy || ptoBalance !== 0 ? (
-            <>
-              <span className="tabular-nums text-foreground">{formatHours(ptoAvailable)}</span> available
-              {ptoPending > 0 && <> ({formatHours(ptoPending)} requested)</>}
-            </>
-          ) : (
-            "none on file yet"
-          )}
-        </span>
+      <div className="flex items-center justify-end gap-1 border-b px-2 py-1.5 sm:px-4">
+        {week !== thisWeek && (
+          <Button variant="ghost" size="sm" onClick={() => setWeek(thisWeek)}>
+            This week
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          aria-label="Previous week"
+          disabled={!canGoBack}
+          onClick={() => setWeek(addDays(week, -7))}
+        >
+          <ChevronLeft />
+        </Button>
+        <span className="min-w-28 text-center text-sm tabular-nums">{formatRange(days[0], days[6])}</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          aria-label="Next week"
+          disabled={!canGoForward}
+          onClick={() => setWeek(addDays(week, 7))}
+        >
+          <ChevronRight />
+        </Button>
       </div>
 
       {match.ending && (
@@ -339,6 +334,69 @@ export function JoeyTimesheet({
           </Button>
         </div>
       </div>
+    </>
+  );
+
+  const periodList = (list: PayPeriod[], empty: string) =>
+    list.length === 0 ? (
+      <p className="border-b px-4 py-4 text-sm text-muted-foreground sm:px-6">{empty}</p>
+    ) : (
+      list.map((p) => (
+        <PeriodSummary key={p.id} period={p} entries={inPeriod(p)} splits={splits} rates={rates} weekLink={weekLink} />
+      ))
+    );
+
+  return (
+    <>
+      <PageHeader title="Timecards" />
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b px-4 py-2 text-xs text-muted-foreground sm:px-6">
+        <span>
+          Host: <span className="text-foreground">{match.hostName}</span>
+          {otherMatches.map((m) => (
+            <Link key={m.id} href={`/joey/timesheets?match=${m.id}`} className="ml-2 underline-offset-2 hover:underline">
+              Switch to {m.hostName}
+            </Link>
+          ))}
+        </span>
+        <span>
+          Paid {SCHEDULE_LABELS[paySchedule.current].toLowerCase()}
+          {paySchedule.next && (
+            <> · {SCHEDULE_LABELS[paySchedule.next.kind].toLowerCase()} from {formatShort(paySchedule.next.from)}</>
+          )}
+        </span>
+        <span>
+          PTO:{" "}
+          {hasPtoPolicy || ptoBalance !== 0 ? (
+            <>
+              <span className="tabular-nums text-foreground">{formatHours(ptoAvailable)}</span> available
+              {ptoPending > 0 && <> ({formatHours(ptoPending)} requested)</>}
+            </>
+          ) : (
+            "none on file yet"
+          )}
+        </span>
+      </div>
+
+      <PageTabs
+        defaultTab="in-progress"
+        tabs={[
+          { id: "in-progress", label: "In Progress", count: needsYou, content: inProgress },
+          {
+            id: "pending",
+            label: "Pending",
+            count: pendingPeriods.length,
+            content: periodList(pendingPeriods, "Nothing waiting on your Host."),
+          },
+          {
+            id: "approved",
+            label: "Approved",
+            count: approvedPeriods.length,
+            content: periodList(approvedPeriods, "Nothing approved and waiting to be paid."),
+          },
+          { id: "paid", label: "Paid", content: periodList(paidPeriods, "No paid periods yet.") },
+        ]}
+      />
 
       <Modal
         open={editing !== null}
@@ -404,3 +462,62 @@ function PeriodDivider({ period }: { period: PeriodSpan }) {
   );
 }
 
+
+/** A pay period on the Pending, Approved or Paid tab: its days, totals and when it was (or will be) paid. */
+function PeriodSummary({
+  period: p,
+  entries,
+  splits,
+  rates,
+  weekLink,
+}: {
+  period: PayPeriod;
+  entries: TimeEntry[];
+  splits: Map<string, EntrySplit>;
+  rates: Rate[];
+  weekLink: (d: string) => string;
+}) {
+  const sorted = [...entries].sort((a, b) => a.work_date.localeCompare(b.work_date));
+  return (
+    <article id={`period-${p.id}`} className="scroll-mt-4 border-b px-4 py-4 text-sm sm:px-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <p className="font-medium">Pay period {formatRange(p.period_start, p.period_end)}</p>
+        <p className="text-xs text-muted-foreground">
+          {p.paid_on
+            ? `Paid ${formatShort(p.paid_on)}${p.paid_amount_cents !== null ? ` · ${formatMoney(p.paid_amount_cents)} gross` : ""}`
+            : entries.every((e) => e.status === "approved")
+              ? `Approved · paid by ${formatShort(p.payday)}`
+              : `Waiting on your Host · paid by ${formatShort(p.payday)}`}
+        </p>
+      </div>
+      <ul className="my-3 divide-y rounded-md border">
+        {sorted.map((e) => {
+          const overtime = splits.get(e.id)?.overtime ?? 0;
+          return (
+            <li key={e.id}>
+              <Link
+                href={weekLink(e.work_date)}
+                className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 hover:bg-accent/40"
+              >
+                <span className="w-28 shrink-0">{formatDay(e.work_date)}</span>
+                <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                  {e.kind === "work" && e.start_time
+                    ? `${formatTime(e.start_time)} – ${formatTime(e.end_time)}`
+                    : KIND_LABELS[e.kind]}
+                </span>
+                <span className="tabular-nums">
+                  {formatHours(e.hours)}
+                  {overtime > 0 && (
+                    <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">({formatHours(overtime)} OT)</span>
+                  )}
+                </span>
+                {e.status !== "approved" && <StatusPill status={e.status} />}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      <WeekTotals totals={totalsFor(entries, splits, rates)} />
+    </article>
+  );
+}
