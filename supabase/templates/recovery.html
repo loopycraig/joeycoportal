@@ -1,14 +1,46 @@
-<div style="max-width:480px; margin:0 auto; font-family:Poppins, Arial, sans-serif; color:#293156;">
-  <div style="background:#293156; padding:20px 24px; border-radius:8px 8px 0 0;">
-    <img src="{{ .SiteURL }}/joey-logo.png" width="104" height="48" alt="JoeyCo" style="display:block;" />
-  </div>
-  <div style="padding:8px 24px 24px 24px;">
-  <h2>Set your password</h2>
-  <p>Use the button below to set a password for your JoeyCo account.</p>
-  <p>
-    <a href="{{ .ConfirmationURL }}" style="display:inline-block; padding:12px 24px; background:#FFCC66; color:#293156; font-weight:600; text-decoration:none; border-radius:8px;">Set my password</a>
-  </p>
-  <p style="color:#5b6280; font-size:14px;">Didn't ask for this? You can ignore this email and your password won't change.</p>
-  <p style="color:#5b6280; font-size:14px;">JoeyCo &middot; <a href="https://withjoey.com" style="color:#293156;">withjoey.com</a></p>
-  </div>
-</div>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Set your JoeyCo password</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f5f8;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f5f8;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <!-- Card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px; background-color:#ffffff; border:1px solid #e3e5ec; border-radius:12px; border-collapse:separate; overflow:hidden;">
+          <tr>
+            <td style="background-color:#293156; padding:20px 32px; border-radius:12px 12px 0 0;">
+              <img src="{{ .SiteURL }}/joey-logo.png" width="104" height="48" alt="JoeyCo" style="display:block; border:0;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px; font-family:Poppins, 'Helvetica Neue', Arial, sans-serif; color:#293156;">
+              <h1 style="margin:0 0 12px 0; font-size:22px; line-height:30px; font-weight:600;">Set your password</h1>
+              <p style="margin:0 0 24px 0; font-size:16px; line-height:25px;">Use the button below to set a password for your JoeyCo account.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td bgcolor="#FFCC66" style="border-radius:8px;">
+                    <a href="{{ .ConfirmationURL }}" style="display:inline-block; padding:12px 24px; font-family:Poppins, 'Helvetica Neue', Arial, sans-serif; font-size:16px; font-weight:600; color:#293156; text-decoration:none; border-radius:8px;">Set my password</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:24px 0 0 0; font-size:14px; line-height:21px; color:#6b7190;">Didn't ask for this? You can ignore this email and your password won't change.</p>
+            </td>
+          </tr>
+        </table>
+        <!-- Footer, outside the card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;">
+          <tr>
+            <td align="center" style="padding:20px 32px 0 32px; font-family:Poppins, 'Helvetica Neue', Arial, sans-serif; font-size:13px; line-height:20px; color:#8a8fa8;">
+              JoeyCo &middot; <a href="https://withjoey.com" style="color:#8a8fa8; text-decoration:underline;">withjoey.com</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
