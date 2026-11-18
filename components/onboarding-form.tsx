@@ -1,5 +1,6 @@
 "use client";
 
+import { registerJoeySignUp } from "@/lib/joey/actions";
 import { createClient } from "@/lib/supabase/client";
 import { friendlyError } from "@/lib/errors";
 import { homeFor, type Role } from "@/lib/roles";
@@ -51,6 +52,9 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
 
       const { error: roleError } = await supabase.rpc("set_my_role", { p_role: role });
       if (roleError) throw roleError;
+
+      // A new Joey goes to Clarify at Sign Up right away. Never holds up their first page.
+      if (role === "joey") await registerJoeySignUp().catch(() => {});
 
       router.push(homeFor(role));
       router.refresh();

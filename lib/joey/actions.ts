@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { deleteReferenceRecord, pushApplication } from "@/lib/clarify/sync";
+import { deleteReferenceRecord, pushApplication, pushSignUp } from "@/lib/clarify/sync";
 import { clarifyConfigured } from "@/lib/clarify/client";
 import {
   EDITABLE_FIELDS,
@@ -20,6 +20,26 @@ async function currentUserId(supabase: Awaited<ReturnType<typeof createClient>>)
   const { data } = await supabase.auth.getUser();
   if (!data.user) throw new Error("Not signed in");
   return data.user.id;
+}
+
+/**
+ * Right after someone picks Joey: makes their application and sends them to Clarify at Sign Up.
+ * Never fails the sign-up; anything that doesn't reach Clarify is retried by the cron.
+ */
+export async function registerJoeySignUp(): Promise<void> {
+  const supabase = await createClient();
+  const uid = await currentUserId(supabase);
+  const { error } = await supabase.rpc("ensure_my_application");
+  if (error) {
+    console.error("[clarify] couldn't create the application at sign-up", uid, error.message);
+    return;
+  }
+  if (!clarifyConfigured()) return;
+  try {
+    await pushSignUp(createAdminClient(), uid);
+  } catch (e) {
+    console.error("[clarify] sign-up push failed", uid, e);
+  }
 }
 
 /** Autosave. Only whitelisted answer columns are written; RLS rejects edits after submission. */

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DISCLOSURE_FIELDS, INITIAL_VALUES, JOEY, PERSON, REFERENCE } from "@/lib/clarify/config";
+import { DISCLOSURE_FIELDS, INITIAL_VALUES, JOEY, PERSON, REFERENCE, SIGN_UP_VALUES } from "@/lib/clarify/config";
 import { isSupportedCity } from "@/lib/joey/application";
 import {
   clarifyConfigured,
@@ -46,6 +46,81 @@ function disclosureAttributes(app: {
     [DISCLOSURE_FIELDS.conductSignedAt, pacificDate(app.conduct_signed_at)],
   ];
   return Object.fromEntries(pairs.filter((p): p is [string, unknown] => p[0] !== null));
+}
+
+// ─────────────────────────────────────────────
+// Portal → Clarify: sign-up
+// ─────────────────────────────────────────────
+
+/**
+ * When someone picks Joey: their Person record (matched on email) and a c_joey record at Sign Up,
+ * before they've started the application. Does nothing if the Joey record already exists.
+ * Needs their joey_applications row (ensure_my_application makes it).
+ */
+export async function pushSignUp(admin: Admin, joeyId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!clarifyConfigured()) return { ok: false, error: "Clarify isn't configured" };
+
+  try {
+    const [{ data: app, error: appErr }, { data: profile, error: profErr }] = await Promise.all([
+      admin.from("joey_applications").select("clarify_joey_id, first_name, last_name").eq("joey_id", joeyId).single(),
+      admin.from("profiles").select("email, full_name, role, clarify_person_id").eq("id", joeyId).single(),
+    ]);
+    if (appErr) throw appErr;
+    if (profErr) throw profErr;
+    if (profile.role !== "joey") return { ok: false, error: "Not a Joey" };
+    if (app.clarify_joey_id) return { ok: true };
+
+    const name = profile.full_name?.trim()
+      ? splitName(profile.full_name)
+      : { first_name: app.first_name, last_name: app.last_name };
+    const person = await upsertPersonByEmail(
+      dropEmpty({ name: dropEmpty(name), email_addresses: items([profile.email]) }),
+    );
+    if (person.id !== profile.clarify_person_id) {
+      const { error } = await admin.from("profiles").update({ clarify_person_id: person.id }).eq("id", joeyId);
+      if (error) throw error;
+    }
+
+    const created = await createRecord(
+      JOEY.object,
+      dropEmpty({
+        [JOEY.name]: `${name.first_name ?? ""} ${name.last_name ?? ""}`.trim() || profile.email,
+        [JOEY.personLink]: person.id,
+        [JOEY.stage]: SIGN_UP_VALUES.stage,
+        [JOEY.applicationStatus]: SIGN_UP_VALUES.applicationStatus,
+      }),
+      [{ field: JOEY.personLink, entity: "person", id: person.id }],
+    );
+    const { error } = await admin
+      .from("joey_applications")
+      .update({ clarify_joey_id: created.id, clarify_sync_error: null })
+      .eq("joey_id", joeyId);
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    console.error("[clarify] sign-up push failed", joeyId, error);
+    await admin.from("joey_applications").update({ clarify_sync_error: error.slice(0, 1000) }).eq("joey_id", joeyId);
+    return { ok: false, error };
+  }
+}
+
+/** Retries sign-ups that didn't reach Clarify: draft applications with no Joey record yet. */
+export async function pushPendingSignUps(admin: Admin) {
+  const { data, error } = await admin
+    .from("joey_applications")
+    .select("joey_id")
+    .eq("status", "draft")
+    .is("clarify_joey_id", null)
+    .limit(200);
+  if (error) throw error;
+  const results = { pushed: 0, failed: 0 };
+  for (const a of data ?? []) {
+    const r = await pushSignUp(admin, a.joey_id);
+    if (r.ok) results.pushed++;
+    else results.failed++;
+  }
+  return results;
 }
 
 // ─────────────────────────────────────────────
@@ -104,8 +179,14 @@ export async function pushApplication(admin: Admin, joeyId: string): Promise<{ o
 
     let joeyRecordId = app.clarify_joey_id as string | null;
     if (joeyRecordId) {
-      // The stage and status belong to the team now, so they're never sent again.
-      await updateRecord(JOEY.object, joeyRecordId, joeyAttributes);
+      // Made at sign-up: the first push after submitting moves it from Sign Up to Assignment. Once the
+      // team has moved the stage anywhere else, the stage and status are theirs and never sent again.
+      const current = readSelect((await getRecord(JOEY.object, joeyRecordId)).attributes[JOEY.stage]);
+      const promote =
+        current === SIGN_UP_VALUES.stage
+          ? { [JOEY.stage]: INITIAL_VALUES.stage, [JOEY.applicationStatus]: INITIAL_VALUES.applicationStatus }
+          : {};
+      await updateRecord(JOEY.object, joeyRecordId, { ...joeyAttributes, ...promote });
     } else {
       const created = await createRecord(
         JOEY.object,
@@ -318,10 +399,16 @@ export async function syncOnVisit(joeyId: string) {
     const admin = createAdminClient();
     const { data: app } = await admin
       .from("joey_applications")
-      .select("status, clarify_sync_requested_at, clarify_synced_at")
+      .select("status, clarify_joey_id, clarify_sync_requested_at, clarify_synced_at")
       .eq("joey_id", joeyId)
       .maybeSingle();
-    if (!app || app.status !== "submitted") return;
+    if (!app) return;
+    if (app.status === "draft") {
+      // A sign-up that didn't reach Clarify.
+      if (!app.clarify_joey_id) await pushSignUp(admin, joeyId);
+      return;
+    }
+    if (app.status !== "submitted") return;
     if (app.clarify_sync_requested_at && (!app.clarify_synced_at || app.clarify_sync_requested_at > app.clarify_synced_at)) {
       await pushApplication(admin, joeyId);
     }

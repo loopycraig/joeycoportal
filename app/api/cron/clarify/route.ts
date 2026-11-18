@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { pollStages, pushPending } from "@/lib/clarify/sync";
+import { pollStages, pushPending, pushPendingSignUps } from "@/lib/clarify/sync";
 import { pollDeals } from "@/lib/clarify/deal-sync";
 
 // Safety net for the Clarify sync: retries failed pushes, catches up on stage changes, and creates
@@ -13,10 +13,11 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient();
   try {
+    const signUps = await pushPendingSignUps(admin);
     const pushed = await pushPending(admin);
     const stages = await pollStages(admin);
     const deals = await pollDeals(admin);
-    return Response.json({ pushed, stages, deals });
+    return Response.json({ signUps, pushed, stages, deals });
   } catch (e) {
     console.error("[clarify] cron failed", e);
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
