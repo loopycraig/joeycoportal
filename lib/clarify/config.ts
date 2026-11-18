@@ -56,7 +56,16 @@ export const REFERENCE = {
   // stage, notes and interview notes are left for the team
 } as const;
 
-/** Values written on the first push. Later pushes never touch the stage. */
+/** Written when someone picks Joey in the portal: their Joey record starts at Sign Up. */
+export const SIGN_UP_VALUES = {
+  stage: "Sign Up",
+  applicationStatus: "Pending",
+} as const;
+
+/**
+ * Written when the application is submitted, if the record is still at Sign Up (or is new).
+ * Once the team has moved the stage on, pushes never touch it.
+ */
 export const INITIAL_VALUES = {
   stage: "Assignment",
   applicationStatus: "Complete",
