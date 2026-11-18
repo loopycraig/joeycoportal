@@ -269,17 +269,25 @@ export async function getHostHome(): Promise<HomeCardData[]> {
     });
   }
 
-  return [
-    {
-      title: "Timecards",
-      href: "/host/timesheets",
-      rows: ts,
-      empty: matches.length ? "No hours waiting for you." : "Hours show up here once you have a Joey.",
-    },
-    { title: "Payments", href: "/host/payments", rows: pay, empty: "No pay periods yet." },
-    { title: "Agreements", href: "/host/agreements", rows: agreements, empty: "No agreements waiting on anyone." },
-    { title: "Matches", href: "/host/joeys", rows: joeys, empty: "" },
-  ];
+  const timecardsCard: HomeCardData = {
+    title: "Timecards",
+    href: "/host/timesheets",
+    rows: ts,
+    empty: matches.length ? "No hours waiting for you." : "Hours show up here once you have a Joey.",
+  };
+  const paymentsCard: HomeCardData = { title: "Payments", href: "/host/payments", rows: pay, empty: "No pay periods yet." };
+  const agreementsCard: HomeCardData = {
+    title: "Agreements",
+    href: "/host/agreements",
+    rows: agreements,
+    empty: "No agreements waiting on anyone.",
+  };
+  const matchesCard: HomeCardData = { title: "Matches", href: "/host/joeys", rows: joeys, empty: "" };
+
+  // Before a match, signing agreements is the first step; after, timecards are the day-to-day.
+  return matches.length
+    ? [timecardsCard, paymentsCard, agreementsCard, matchesCard]
+    : [agreementsCard, matchesCard, timecardsCard, paymentsCard];
 }
 
 // ─────────────────────────────────────────────
@@ -308,11 +316,12 @@ export async function getJoeyHome(): Promise<HomeCardData[]> {
 
   if (!match) {
     const locked = "Unlocks once you're matched with a Host.";
+    // Before a match, signing agreements is the first step.
     return [
-      { title: "Timecards", href: "/joey/timesheets", rows: [], empty: locked },
-      { title: "Payments", href: "/joey/payments", rows: [], empty: locked },
       agreementsCard,
       { title: "Matches", href: "/joey/hosts", rows: [], empty: "You're not matched with a Host yet." },
+      { title: "Timecards", href: "/joey/timesheets", rows: [], empty: locked },
+      { title: "Payments", href: "/joey/payments", rows: [], empty: locked },
     ];
   }
 

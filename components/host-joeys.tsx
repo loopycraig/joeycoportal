@@ -97,8 +97,7 @@ export function HostJoeys({
 
       {isEmpty && !adding ? (
         <EmptyState title="No matches yet">
-          Joeys the JoeyCo team proposes for you show up here. If you already have a Joey, add them by email. They
-          need to sign up and choose Joey first.
+          Joeys the JoeyCo team has interviewed for you show up here. If you already have a Joey, add them by email.
         </EmptyState>
       ) : (
         <PageTabs

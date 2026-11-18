@@ -54,7 +54,7 @@ function HomeCard({ card }: { card: HomeCardData }) {
   return (
     <section aria-labelledby={`home-${href}`} className="flex flex-col rounded-lg border bg-card">
       <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
-        <h2 id={`home-${href}`} className="text-sm font-medium">
+        <h2 id={`home-${href}`} className="text-base font-semibold">
           <Link href={href} className="hover:underline">
             {title}
           </Link>
