@@ -13,7 +13,7 @@ export function PageHeader({
 }) {
   return (
     <header className={cn("flex h-12 shrink-0 items-center justify-between gap-4 border-b px-4 sm:px-6", className)}>
-      <h1 className="text-sm font-medium">{title}</h1>
+      <h1 className="text-base font-semibold">{title}</h1>
       {actions}
     </header>
   );

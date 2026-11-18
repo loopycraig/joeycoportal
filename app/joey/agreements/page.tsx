@@ -57,6 +57,9 @@ async function Content() {
 
   return (
     <>
+      <p className="border-b px-4 py-3 text-sm text-muted-foreground sm:px-6">
+        Review and sign agreements here. Some are between you and JoeyCo, others between you and your Host.
+      </p>
       {!matched && (
         <>
           <JourneyBar steps={journeySteps(stages, events, currentStage)} />

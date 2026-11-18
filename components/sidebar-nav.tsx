@@ -43,7 +43,7 @@ export function SidebarNav({ items, lockedNote }: { items: NavItem[]; lockedNote
               "whitespace-nowrap rounded-md px-2 py-1.5 text-sm transition-colors",
               "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               active
-                ? "bg-accent text-foreground"
+                ? "bg-highlight font-medium text-highlight-foreground"
                 : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
             )}
           >

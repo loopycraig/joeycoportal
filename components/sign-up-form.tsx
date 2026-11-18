@@ -63,7 +63,7 @@ export function SignUpForm({
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <div className="grid gap-1">
-        <h1 className="text-xl font-medium tracking-tight">Create your Joey account</h1>
+        <h1 className="text-xl font-medium tracking-tight">Create your JoeyCo account</h1>
         <p className="text-sm text-muted-foreground">
           You&apos;ll choose Joey or Host after signing up.
         </p>

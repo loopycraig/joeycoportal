@@ -12,19 +12,23 @@
     --card-foreground: 220 9% 9%;
     --popover: 0 0% 100%;
     --popover-foreground: 220 9% 9%;
-    --primary: 235 56% 58%;
+    /* Brand navy (withjoey.com). */
+    --primary: 229 35% 25%;
     --primary-foreground: 0 0% 100%;
     --secondary: 220 13% 95%;
     --secondary-foreground: 220 9% 9%;
     --muted: 220 13% 95%;
     --muted-foreground: 220 6% 44%;
-    --accent: 6 100% 62%;
-    --accent-foreground: 220 9% 9%;
+    /* Soft sunflower tint for hovers; full sunflower + navy for buttons and highlights. */
+    --accent: 40 100% 92%;
+    --accent-foreground: 229 35% 25%;
+    --highlight: 40 100% 70%;
+    --highlight-foreground: 229 35% 25%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 13% 90%;
     --input: 220 13% 88%;
-    --ring: 235 56% 58%;
+    --ring: 229 35% 25%;
     --chart-1: 235 56% 60%;
     --chart-2: 160 60% 45%;
     --chart-3: 38 92% 55%;
@@ -44,19 +48,21 @@
     --card-foreground: 180 8% 97%;
     --popover: 229 36% 19%;
     --popover-foreground: 180 8% 97%;
-    --primary: 235 56% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 40 100% 70%;
+    --primary-foreground: 229 35% 25%;
     --secondary: 229 30% 31%;
     --secondary-foreground: 180 8% 97%;
     --muted: 229 30% 31%;
     --muted-foreground: 225 18% 72%;
-    --accent: 6 100% 62%;
+    --accent: 229 30% 33%;
     --accent-foreground: 180 8% 97%;
+    --highlight: 40 100% 70%;
+    --highlight-foreground: 229 35% 25%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     --border: 229 28% 33%;
     --input: 229 28% 36%;
-    --ring: 235 56% 60%;
+    --ring: 40 100% 70%;
     --chart-1: 235 56% 60%;
     --chart-2: 160 60% 45%;
     --chart-3: 38 92% 55%;
@@ -68,6 +74,10 @@
 @layer base {
   * {
     @apply border-border;
+  }
+  /* A little larger than the browser default: every rem-based size scales with it. */
+  html {
+    font-size: 106.25%;
   }
   body {
     @apply bg-background text-foreground;

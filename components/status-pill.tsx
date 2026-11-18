@@ -25,8 +25,8 @@ export type PillTone = keyof typeof TONES;
 /** A label with a coloured dot. Use `tone` for anything that isn't a time entry. */
 export function Pill({ label, dot, tone = "neutral" }: { label: string; dot?: string; tone?: PillTone }) {
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
-      <span aria-hidden className={cn("size-2 shrink-0 rounded-full", dot ?? TONES[tone])} />
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm text-muted-foreground">
+      <span aria-hidden className={cn("size-2.5 shrink-0 rounded-full", dot ?? TONES[tone])} />
       {label}
     </span>
   );
