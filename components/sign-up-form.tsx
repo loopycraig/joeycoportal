@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { friendlyError } from "@/lib/errors";
 import { claimPlaceholder } from "@/lib/auth/claim";
+import { siteUrl } from "@/lib/site-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +41,7 @@ export function SignUpForm({
         password,
         options: {
           // The confirmation email link lands here, which signs them in
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/portal`,
+          emailRedirectTo: `${siteUrl(window.location.origin)}/auth/callback?next=/portal`,
         },
       });
       // The email already has an account. If JoeyCo made it as a placeholder from their match, send

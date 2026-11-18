@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { siteUrl } from "@/lib/site-url";
 
 /**
  * Someone signed up with an email that already has a placeholder account (made from a Clarify Match
@@ -25,7 +26,7 @@ export async function claimPlaceholder(email: string): Promise<boolean> {
   const h = await headers();
   const origin = h.get("origin") ?? `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
   const { error: sendErr } = await (await createClient()).auth.resetPasswordForEmail(address, {
-    redirectTo: `${origin}/auth/callback?next=/auth/update-password`,
+    redirectTo: `${siteUrl(origin)}/auth/callback?next=/auth/update-password`,
   });
   if (sendErr) throw new Error(sendErr.message);
   return true;

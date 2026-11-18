@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { friendlyError } from "@/lib/errors";
+import { siteUrl } from "@/lib/site-url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +24,7 @@ export function ForgotPasswordForm() {
     // The emailed link goes through /auth/callback, which signs the person in,
     // then on to the page where they choose a new password.
     const { error } = await createClient().auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/auth/update-password`,
+      redirectTo: `${siteUrl(window.location.origin)}/auth/callback?next=/auth/update-password`,
     });
 
     if (error) {
