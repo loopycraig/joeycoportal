@@ -1,6 +1,8 @@
 // Shared by server and client code. Mirrors public.application_missing() in SQL,
 // which stays the authority on submit.
 
+import { CALIFORNIA_PLACES } from "@/lib/joey/california-places";
+
 export type Application = {
   joey_id: string;
   first_name: string | null;
@@ -164,6 +166,36 @@ export function normalizeCity(city: string) {
 
 export function isSupportedCity(city: string) {
   return supportedByKey.has(cityKey(city));
+}
+
+// Well-known neighborhoods people type as their city. The Census list only has cities, towns and CDPs.
+const CALIFORNIA_NEIGHBORHOODS = [
+  "Hollywood", "North Hollywood", "Venice", "Koreatown", "Westwood", "Brentwood", "Mar Vista",
+  "Highland Park", "Eagle Rock", "Downtown Los Angeles", "DTLA", "Van Nuys", "Woodland Hills",
+  "Tarzana", "Northridge", "Reseda", "Pacific Palisades", "Playa Vista", "San Pedro", "Wilmington",
+  "Mission District", "SoMa", "Noe Valley", "Pacific Heights", "Hillcrest", "North Park",
+  "Pacific Beach", "Ocean Beach", "Mission Valley", "Bay Area", "LA", "SF",
+];
+
+/** Lowercase, single spaces, accents dropped (so "La Canada Flintridge" matches "La Cañada Flintridge"). */
+function placeKey(s: string) {
+  return cityKey(s).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\./g, "");
+}
+
+let californiaKeys: Set<string> | null = null;
+
+/**
+ * Whether a city a Joey typed looks like it's in California: one of ours, a Census place, or a
+ * well-known neighborhood. "Austin, TX" is outside; "Davis, CA" and "Davis, California" are inside.
+ */
+export function isInCalifornia(city: string): boolean {
+  if (isSupportedCity(city)) return true;
+  californiaKeys ??= new Set([...CALIFORNIA_PLACES, ...CALIFORNIA_NEIGHBORHOODS].map(placeKey));
+  let key = placeKey(city);
+  const state = key.match(/^(.*?),?\s+(ca|calif|california)$/);
+  if (state) key = state[1];
+  else if (/,\s*[a-z .]+$/.test(key)) return false; // Another state or country after a comma.
+  return californiaKeys.has(key.replace(/^city of /, ""));
 }
 
 /** Clarify's c_joey.move_in_timeline options. The portal asks for a date and works out the bucket. */
