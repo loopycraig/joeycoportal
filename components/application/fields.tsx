@@ -65,10 +65,13 @@ export function SelectInput({
   invalid,
   placeholder = "Choose one",
   describedBy,
+  labels,
 }: {
   id: string;
   value: string | null;
   options: string[];
+  /** Display text for options whose stored value reads differently. */
+  labels?: Record<string, string>;
   onChange: (v: string) => void;
   invalid?: boolean;
   placeholder?: string;
@@ -81,14 +84,16 @@ export function SelectInput({
       onChange={(e) => onChange(e.target.value)}
       aria-invalid={invalid || undefined}
       aria-describedby={describedBy}
-      className={cn(control, "h-9", !value && "text-muted-foreground", invalid && "border-destructive")}
+      // A solid background and explicit option colors: some browsers draw the open list with the
+      // system's white background but the page's text color, which made options unreadable.
+      className={cn(control, "h-9 bg-background text-foreground", !value && "text-muted-foreground", invalid && "border-destructive")}
     >
-      <option value="" disabled>
+      <option value="" disabled className="bg-popover text-muted-foreground">
         {placeholder}
       </option>
       {options.map((o) => (
-        <option key={o} value={o} className="text-foreground">
-          {o}
+        <option key={o} value={o} className="bg-popover text-popover-foreground">
+          {labels?.[o] ?? o}
         </option>
       ))}
     </select>

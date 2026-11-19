@@ -3,10 +3,13 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/profile";
 import { APPLICATION_SELECT, REFERENCE_SELECT, type Application, type Reference } from "@/lib/joey/application";
+import { PORTAL_STAGES, portalJourney } from "@/lib/joey/journey";
 
 export type Stage = {
   key: string;
   sort_order: number;
+  /** The one-pager step this stage belongs to; the journey bar shows steps. */
+  step: string | null;
   title: string;
   joey_message: string;
   owner: "joey" | "joeyco" | "references" | "vendor" | "host";
@@ -32,7 +35,10 @@ export const isMatched = cache(async (): Promise<boolean> => {
 });
 
 /** Stages from which a Joey's Agreements page replaces their application (Clarify "Match Ready" and on). */
-export const AGREEMENT_STAGES = ["approved", "matched"];
+export const AGREEMENT_STAGES = ["approved", "matching", "background_check", ...PORTAL_STAGES] as string[];
+
+/** Stages before move-in that a matched Joey still sees the journey for (on Home and Agreements). */
+export const PRE_MOVE_IN_STAGES = ["signing", "move_in_prep"];
 
 /** Agreements opens at Match Ready, or once matched. */
 export const agreementsUnlocked = cache(async (): Promise<boolean> => {
@@ -64,7 +70,8 @@ export const getApplicationBundle = cache(async () => {
   const { error: ensureError } = await supabase.rpc("ensure_my_application");
   if (ensureError) throw ensureError;
 
-  const [app, refs, stages, events] = await Promise.all([
+  const profile = await getProfile();
+  const [app, refs, stages, events, portal] = await Promise.all([
     supabase.from("joey_applications").select(APPLICATION_SELECT).single(),
     supabase
       .from("joey_references")
@@ -72,16 +79,23 @@ export const getApplicationBundle = cache(async () => {
       .order("created_at"),
     supabase.from("application_stages").select("*").order("sort_order"),
     supabase.from("application_stage_events").select("stage_key, occurred_at").order("occurred_at"),
+    portalJourney(supabase, profile.id),
   ]);
   for (const r of [app, refs, stages, events]) if (r.error) throw r.error;
 
   const application = app.data as unknown as Application;
   const stageList = (stages.data ?? []) as Stage[];
+  // With a portal match, the match and its agreements say where the Joey is, not Clarify.
+  const stageKey = portal?.key ?? application.stage_key;
+  const stageEvents = portal
+    ? [...((events.data ?? []) as StageEvent[]).filter((e) => !(PORTAL_STAGES as readonly string[]).includes(e.stage_key)), ...portal.events]
+        .sort((x, y) => x.occurred_at.localeCompare(y.occurred_at))
+    : ((events.data ?? []) as StageEvent[]);
   return {
     application,
     references: (refs.data ?? []) as Reference[],
     stages: stageList,
-    events: (events.data ?? []) as StageEvent[],
-    currentStage: stageList.find((s) => s.key === application.stage_key) ?? stageList[0],
+    events: stageEvents,
+    currentStage: stageList.find((s) => s.key === stageKey) ?? stageList[0],
   };
 });

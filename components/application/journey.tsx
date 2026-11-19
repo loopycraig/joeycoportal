@@ -5,73 +5,84 @@ import type { JourneyStep, StepState } from "@/components/application/journey-ba
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
-/** Where the Joey is on the path. When paused or closed, the path stops at the last on-path step reached. */
+/**
+ * The one-pager's steps, with where the Joey is. A step can hold more than one stage (Getting
+ * Started: applying, then submitted), so stages are grouped by their step. When paused or closed,
+ * the path stops at the last on-path step reached.
+ */
 export function journeySteps(stages: Stage[], events: StageEvent[], currentStage: Stage): JourneyStep[] {
   const onPath = stages.filter((s) => s.on_path);
-  const lastAt = new Map<string, string>();
-  for (const e of events) lastAt.set(e.stage_key, e.occurred_at);
+  const firstAt = new Map<string, string>();
+  for (const e of events) if (!firstAt.has(e.stage_key)) firstAt.set(e.stage_key, e.occurred_at);
 
   const offPath = !currentStage.on_path;
-  const reached = offPath ? onPath.findLast((s) => lastAt.has(s.key)) ?? onPath[0] : currentStage;
-  const stateOf = (s: Stage): StepState =>
-    s.sort_order < reached.sort_order ? "done" : s.key === reached.key ? (offPath ? "paused" : "current") : "upcoming";
+  const reached = offPath ? onPath.findLast((s) => firstAt.has(s.key)) ?? onPath[0] : currentStage;
 
-  return onPath.map((s) => {
-    const at = lastAt.get(s.key);
+  const groups: { step: string; stages: Stage[] }[] = [];
+  for (const s of onPath) {
+    const step = s.step ?? s.title;
+    const last = groups.at(-1);
+    if (last && last.step === step) last.stages.push(s);
+    else groups.push({ step, stages: [s] });
+  }
+
+  return groups.map(({ step, stages: inStep }) => {
+    const first = inStep[0];
+    const lastStage = inStep[inStep.length - 1];
+    const here = inStep.find((s) => s.key === reached.key);
+    const state: StepState = here
+      ? offPath
+        ? "paused"
+        : "current"
+      : lastStage.sort_order < reached.sort_order
+        ? "done"
+        : "upcoming";
+    const at = inStep.map((s) => firstAt.get(s.key)).find(Boolean);
     return {
-      key: s.key,
-      title: s.title,
-      ownerLabel: s.owner_label,
-      typicalDuration: s.typical_duration,
-      state: stateOf(s),
+      key: first.key,
+      title: step,
+      ownerLabel: (here ?? first).owner_label,
+      typicalDuration: first.typical_duration,
+      state,
       reachedOn: at ? fmt(at) : null,
     };
   });
 }
 
 /** After submitting: where things stand, what's next, and anything the Joey needs to do. */
-export function StageStatus({
-  stages,
-  events,
-  currentStage,
-}: {
-  stages: Stage[];
-  events: StageEvent[];
-  currentStage: Stage;
-}) {
+export function StageStatus({ stages, currentStage }: { stages: Stage[]; currentStage: Stage }) {
   const offPath = !currentStage.on_path;
-  const since = events.findLast((e) => e.stage_key === currentStage.key)?.occurred_at;
   const next = offPath ? null : stages.find((s) => s.on_path && s.sort_order > currentStage.sort_order);
-  const bgCheck = stages.find((s) => s.key === "background_check");
-  const bgState = !bgCheck
-    ? null
-    : currentStage.key === bgCheck.key
+  const nextLabel = next ? (next.step && next.step !== currentStage.step ? next.step : next.title) : null;
+  // The Joey's own part of the background check, shown from Match Ready until it's underway.
+  const bgState =
+    currentStage.key === "background_check"
       ? "current"
-      : !offPath && currentStage.sort_order > bgCheck.sort_order
-        ? "done"
-        : offPath
-          ? null
-          : "upcoming";
+      : currentStage.key === "approved" || currentStage.key === "matching"
+        ? "upcoming"
+        : null;
 
   return (
     <section aria-labelledby="now-title" className="border-b px-6 py-8">
       <div className="mx-auto max-w-3xl">
         <OwnerChip stage={currentStage} />
-        <h2 id="now-title" className="mt-3 text-2xl font-semibold tracking-tight">
+        {currentStage.step && currentStage.step.toLowerCase() !== currentStage.title.toLowerCase() && (
+          <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">{currentStage.step}</p>
+        )}
+        <h2 id="now-title" className={cn("text-2xl font-semibold tracking-tight", currentStage.step && currentStage.step.toLowerCase() !== currentStage.title.toLowerCase() ? "mt-1" : "mt-3")}>
           {currentStage.title}
         </h2>
         <p className="mt-2 max-w-prose text-[15px] leading-relaxed text-muted-foreground">{currentStage.joey_message}</p>
-        <p className="mt-3 text-sm text-muted-foreground">
-          {since && <>Since {fmt(since)}. </>}
-          {currentStage.typical_duration && !offPath && <>This usually takes {currentStage.typical_duration.toLowerCase()}.</>}
-        </p>
+        {currentStage.typical_duration && !offPath && (
+          <p className="mt-3 text-sm text-muted-foreground">Typical timing: {lowerFirst(currentStage.typical_duration)}.</p>
+        )}
 
         {(next || bgState) && (
           <div className="mt-6 space-y-3 border-t pt-4 text-sm">
             {next && (
               <p>
                 <span className="text-muted-foreground">Next: </span>
-                {next.title}, with {next.owner === "joey" ? "you" : next.owner_label.replace(/^Your /, "your ")}.
+                {nextLabel}, with {next.owner_label.replace(/^You\b/, "you")}.
               </p>
             )}
             {bgState && (
@@ -81,7 +92,7 @@ export function StageStatus({
                   bgState === "current"
                     ? "Look for an email from our screening partner. You'll finish this on their site."
                     : bgState === "upcoming"
-                      ? "We'll email you a consent link after your references check out."
+                      ? "Once you and a Host decide to move forward, we'll email you a consent link."
                       : undefined
                 }
               >
@@ -95,6 +106,11 @@ export function StageStatus({
   );
 }
 
+/** "Varies by city" reads as "varies by city" mid-sentence; "About a week" as "about a week". */
+export function lowerFirst(s: string) {
+  return s.charAt(0).toLowerCase() + s.slice(1);
+}
+
 function OwnerChip({ stage }: { stage: Stage }) {
   const yours = stage.owner === "joey" || stage.owner === "vendor";
   return (
@@ -105,7 +121,7 @@ function OwnerChip({ stage }: { stage: Stage }) {
       )}
     >
       <span aria-hidden className={cn("size-1.5 rounded-full", yours ? "bg-sky-500" : "bg-muted-foreground/60")} />
-      {stage.on_path ? `Who's on it: ${stage.owner_label}` : "Paused"}
+      {stage.on_path ? `Who's on point: ${stage.owner_label}` : "Paused"}
     </span>
   );
 }

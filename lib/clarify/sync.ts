@@ -1,17 +1,19 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DISCLOSURE_FIELDS, INITIAL_VALUES, JOEY, PERSON, REFERENCE, SIGN_UP_VALUES } from "@/lib/clarify/config";
-import { isSupportedCity } from "@/lib/joey/application";
+import { DISCLOSURE_FIELDS, INITIAL_VALUES, JOEY, MATCH_ATTEMPT, PERSON, REFERENCE, SIGN_UP_VALUES } from "@/lib/clarify/config";
+import { isSupportedCity, moveInTimeline } from "@/lib/joey/application";
 import {
   clarifyConfigured,
   createRecord,
   deleteRecord,
   getRecord,
+  listResources,
   listUpdatedAfter,
   readSelect,
   readUpdatedAt,
   updateRecord,
   upsertPersonByEmail,
+  type ClarifyRecord,
 } from "@/lib/clarify/client";
 
 // All functions here take the service-role client (lib/supabase/admin.ts).
@@ -169,7 +171,10 @@ export async function pushApplication(admin: Admin, joeyId: string): Promise<{ o
       [JOEY.motivation]: app.why_joey,
       [JOEY.hostPreference]: app.host_preference,
       [JOEY.workAuthorization]: app.work_authorized,
-      [JOEY.moveInTimeline]: app.move_in_timing,
+      [JOEY.workAuthorizationExplanation]: app.work_authorized === "Other" ? app.work_auth_explanation : null,
+      // The bucket is counted from the day of the push; Earliest move-in date is what stays accurate.
+      [JOEY.moveInTimeline]: app.move_in_date ? moveInTimeline(app.move_in_date) : app.move_in_timing,
+      [JOEY.earliestMoveInDate]: app.move_in_date,
       [JOEY.applicationSource]: app.heard_about,
       [JOEY.codeOfConductSigned]: Boolean(app.conduct_signature),
       [JOEY.preferredTasks]: app.services?.length ? items(app.services) : null,
@@ -301,7 +306,7 @@ export async function refreshStage(admin: Admin, joeyId: string, maxAgeMs = 2 * 
 
   try {
     const record = await getRecord(JOEY.object, app.clarify_joey_id);
-    return await applyStage(admin, joeyId, record.attributes[JOEY.stage], readUpdatedAt(record));
+    return await applyJoeyRecord(admin, joeyId, record);
   } catch (e) {
     console.error("[clarify] stage refresh failed", joeyId, e);
     return "error";
@@ -317,7 +322,7 @@ export async function refreshStageForJoeyRecord(admin: Admin, recordId: string) 
     .maybeSingle();
   if (!app) return "unknown_record";
   const record = await getRecord(JOEY.object, recordId);
-  return applyStage(admin, app.joey_id, record.attributes[JOEY.stage], readUpdatedAt(record));
+  return applyJoeyRecord(admin, app.joey_id, record);
 }
 
 /** Catches up on every Joey record changed in Clarify since the last poll. */
@@ -345,7 +350,7 @@ export async function pollStages(admin: Admin) {
       for (const r of withStage) {
         const joeyId = byRecord.get(r.id);
         // Joeys who applied through Tally have no portal application yet, so they're skipped.
-        const result = joeyId ? await applyStage(admin, joeyId, r.attributes[JOEY.stage], readUpdatedAt(r)) : "not_in_portal";
+        const result = joeyId ? await applyJoeyRecord(admin, joeyId, r) : "not_in_portal";
         counts[result] = (counts[result] ?? 0) + 1;
       }
     }
@@ -356,6 +361,41 @@ export async function pollStages(admin: Admin) {
     .from("sync_state")
     .upsert({ key: "clarify_stage_cursor", value: pollStartedAt, updated_at: pollStartedAt });
   return counts;
+}
+
+/**
+ * Applies a c_joey record's vetting stage. At Match Ready it also reads the Joey's Match Attempts and
+ * background check status: meeting a Host is "Matching with Your Host", and a background check in
+ * progress is that step's second stage.
+ */
+async function applyJoeyRecord(admin: Admin, joeyId: string, record: ClarifyRecord) {
+  const result = await applyStage(admin, joeyId, record.attributes[JOEY.stage], readUpdatedAt(record));
+  if (readSelect(record.attributes[JOEY.stage]) !== "Match Ready") return result;
+
+  const attempts = await listResources(MATCH_ATTEMPT.object, { [`filter[${MATCH_ATTEMPT.joeyLink}]`]: record.id });
+  const meeting = attempts.data.some(
+    (a) =>
+      linksTo(a.attributes[MATCH_ATTEMPT.joeyLink], record.id) &&
+      (MATCH_ATTEMPT.liveStatuses as readonly string[]).includes(readSelect(a.attributes[MATCH_ATTEMPT.status]) ?? "") &&
+      (MATCH_ATTEMPT.meetingStages as readonly string[]).includes(readSelect(a.attributes[MATCH_ATTEMPT.furthestStage]) ?? ""),
+  );
+  const bgInProgress = readSelect(record.attributes[JOEY.backgroundCheckStatus]) === "In Progress";
+  const key = bgInProgress ? "background_check" : meeting ? "matching" : "approved";
+
+  const { data, error } = await admin.rpc("set_match_ready_stage", {
+    p_joey: joeyId,
+    p_key: key,
+    p_at: new Date().toISOString(),
+  });
+  if (error) throw error;
+  return data === "updated" ? "updated" : result;
+}
+
+/** Whether a to-one link (an id, or an object with one) points at this record. */
+function linksTo(v: unknown, id: string) {
+  if (typeof v === "string") return v === id;
+  if (v && typeof v === "object") return (v as { id?: string }).id === id || (v as { _id?: string })._id === id;
+  return false;
 }
 
 async function applyStage(admin: Admin, joeyId: string, raw: unknown, at: string | null) {

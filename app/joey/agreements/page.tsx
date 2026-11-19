@@ -5,7 +5,7 @@ import { toListItem } from "@/components/agreements/agreement-view";
 import { JourneyBar } from "@/components/application/journey-bar";
 import { StageStatus, journeySteps } from "@/components/application/journey";
 import { listMyAgreements } from "@/lib/agreements/queries";
-import { getApplicationBundle, isMatched } from "@/lib/joey/queries";
+import { PRE_MOVE_IN_STAGES, getApplicationBundle, isMatched } from "@/lib/joey/queries";
 import { DISCLOSURES } from "@/lib/joey/disclosures";
 
 export default function JoeyAgreementsPage() {
@@ -60,10 +60,10 @@ async function Content() {
       <p className="border-b px-4 py-3 text-sm text-muted-foreground sm:px-6">
         Review and sign agreements here. Some are between you and JoeyCo, others between you and your Host.
       </p>
-      {!matched && (
+      {(!matched || PRE_MOVE_IN_STAGES.includes(currentStage.key)) && (
         <>
           <JourneyBar steps={journeySteps(stages, events, currentStage)} />
-          <StageStatus stages={stages} events={events} currentStage={currentStage} />
+          <StageStatus stages={stages} currentStage={currentStage} />
         </>
       )}
       <AgreementList items={[...agreements.map((x) => toListItem(x, "joey")), ...onboarding]} />

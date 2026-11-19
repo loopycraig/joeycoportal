@@ -44,7 +44,7 @@ export function LoginForm({
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <div className="grid gap-1">
-        <h1 className="text-xl font-medium tracking-tight">Log in to Joey</h1>
+        <h1 className="text-xl font-medium tracking-tight">Log in to JoeyCo</h1>
         <p className="text-sm text-muted-foreground">
           Enter your email and password.
         </p>
@@ -89,7 +89,7 @@ export function LoginForm({
       </form>
 
       <p className="text-center text-sm text-muted-foreground">
-        New to Joey?{" "}
+        New to JoeyCo?{" "}
         <Link href="/auth/sign-up" className="text-foreground underline-offset-4 hover:underline">
           Create an account
         </Link>

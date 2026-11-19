@@ -7,10 +7,7 @@ import { SUPPORTED_CITIES, isSupportedCity, normalizeCity } from "@/lib/joey/app
 
 type Option = { kind: "supported"; city: string } | { kind: "custom"; city: string };
 
-/**
- * Search our supported cities, or type any other city. Picks show as chips; cities we're
- * not active in yet are marked, with a note encouraging the Joey to apply anyway.
- */
+/** Search our list of cities, or type any other city. Picks show as chips. */
 export function CityPicker({
   legend,
   hint,
@@ -77,8 +74,6 @@ export function CityPicker({
     }
   };
 
-  const notYet = value.filter((c) => !isSupportedCity(c));
-
   return (
     <fieldset className="space-y-2">
       <legend className="text-sm font-medium">{legend}</legend>
@@ -86,33 +81,23 @@ export function CityPicker({
 
       {value.length > 0 && (
         <ul className="flex flex-wrap gap-2 pt-0.5" aria-label="Cities you chose">
-          {value.map((c) => {
-            const ours = isSupportedCity(c);
-            return (
-              <li
-                key={c}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border py-1 pl-3 pr-1 text-sm",
-                  ours ? "border-foreground/80 bg-foreground text-background" : "border-dashed border-input",
-                )}
+          {value.map((c) => (
+            <li
+              key={c}
+              className="inline-flex items-center gap-1.5 rounded-full border border-foreground/80 bg-foreground py-1 pl-3 pr-1 text-sm text-background"
+            >
+              <Check className="size-3.5" aria-hidden />
+              {c}
+              <button
+                type="button"
+                onClick={() => remove(c)}
+                aria-label={`Remove ${c}`}
+                className="grid size-5 place-items-center rounded-full hover:bg-background/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                {ours && <Check className="size-3.5" aria-hidden />}
-                {c}
-                {!ours && <span className="text-xs text-muted-foreground">· not active yet</span>}
-                <button
-                  type="button"
-                  onClick={() => remove(c)}
-                  aria-label={`Remove ${c}`}
-                  className={cn(
-                    "grid size-5 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                    ours ? "hover:bg-background/20" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-                  )}
-                >
-                  <X className="size-3" aria-hidden />
-                </button>
-              </li>
-            );
-          })}
+                <X className="size-3" aria-hidden />
+              </button>
+            </li>
+          ))}
         </ul>
       )}
 
@@ -175,27 +160,13 @@ export function CityPicker({
                     Add &ldquo;{o.city}&rdquo;
                   </span>
                 )}
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {o.kind === "supported" ? "Active" : "Not active yet"}
-                </span>
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      {notYet.length > 0 && (
-        <p className="max-w-prose rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-          We&apos;re not active in {listOf(notYet)} yet, but please submit your application anyway. We&apos;re growing,
-          and where applicants want to live helps us decide where to go next.
-        </p>
-      )}
       {missing && <p className="text-xs text-destructive">{missingText ?? "Required"}</p>}
     </fieldset>
   );
-}
-
-function listOf(xs: string[]) {
-  if (xs.length <= 2) return xs.join(" or ");
-  return `${xs.slice(0, -1).join(", ")}, or ${xs[xs.length - 1]}`;
 }

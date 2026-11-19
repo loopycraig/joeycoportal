@@ -114,15 +114,23 @@ function listText(v: unknown): string[] {
 /** Makes sure the portal has the match for one Clarify deal. Safe to run any number of times. */
 export async function syncDeal(admin: Admin, dealId: string, known?: ClarifyRecord): Promise<DealSyncResult> {
   const deal = known ?? (await getRecord("deal", dealId));
-  if (!SYNC_STAGES.includes(readSelect(deal.attributes.stage) ?? "")) return "skipped_stage";
+  const stage = readSelect(deal.attributes.stage) ?? "";
+  if (!SYNC_STAGES.includes(stage)) return "skipped_stage";
 
   const { data: existing, error: exErr } = await admin
     .from("matches")
-    .select("id")
+    .select("id, clarify_deal_stage")
     .eq("clarify_deal_id", deal.id)
     .maybeSingle();
   if (exErr) throw exErr;
-  if (existing) return "exists";
+  if (existing) {
+    // Kept current so the Joey's journey knows Contracting (signing) from Matched (moved in).
+    if (existing.clarify_deal_stage !== stage) {
+      const { error } = await admin.from("matches").update({ clarify_deal_stage: stage }).eq("id", existing.id);
+      if (error) throw error;
+    }
+    return "exists";
+  }
 
   const hostId = linkedId(deal.attributes.host_id);
   const joeyId = linkedId(deal.attributes.joey_id);
@@ -147,14 +155,17 @@ export async function syncDeal(admin: Admin, dealId: string, known?: ClarifyReco
   if (openErr) throw openErr;
   if (open) {
     if (open.clarify_deal_id) return "exists";
-    const { error } = await admin.from("matches").update({ clarify_deal_id: deal.id }).eq("id", open.id);
+    const { error } = await admin
+      .from("matches")
+      .update({ clarify_deal_id: deal.id, clarify_deal_stage: stage })
+      .eq("id", open.id);
     if (error) throw error;
     return "linked";
   }
 
   const { error: insErr } = await admin
     .from("matches")
-    .insert({ host_id: hostProfile.id, joey_id: joeyProfile.id, clarify_deal_id: deal.id });
+    .insert({ host_id: hostProfile.id, joey_id: joeyProfile.id, clarify_deal_id: deal.id, clarify_deal_stage: stage });
   if (insErr) throw insErr;
   return "created";
 }

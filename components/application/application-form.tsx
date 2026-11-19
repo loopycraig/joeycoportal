@@ -15,12 +15,12 @@ import {
   HEARD_ABOUT_OPTIONS,
   HOST_PREFERENCE_OPTIONS,
   MISSING_LABELS,
-  MOVE_IN_OPTIONS,
   SECTIONS,
   SERVICE_OPTIONS,
   WORK_AUTH_OPTIONS,
   missingFields,
   sectionProgress,
+  todayPacific,
   type ApplicationDraft,
   type Reference,
   type SectionId,
@@ -42,7 +42,7 @@ export function ApplicationForm({
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState(initial);
-  const [refCount, setRefCount] = useState(references.length);
+  const [refTypes, setRefTypes] = useState(references.map((r) => r.reference_type));
   const [save, setSave] = useState<SaveState>({ kind: "idle" });
   const [showMissing, setShowMissing] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -107,7 +107,7 @@ export function ApplicationForm({
     return () => window.removeEventListener("beforeunload", warn);
   }, [flush]);
 
-  const missing = useMemo(() => missingFields(draft, refCount), [draft, refCount]);
+  const missing = useMemo(() => missingFields(draft, refTypes), [draft, refTypes]);
   const sections = sectionProgress(missing);
   const done = sections.filter((s) => s.complete).length;
   const miss = (key: string) => showMissing && missing.includes(key);
@@ -135,7 +135,7 @@ export function ApplicationForm({
       return;
     }
     // The page re-renders as "submitted": journey bar, where things stand, and a summary.
-    window.scrollTo({ top: 0 });
+    // ScrollToTop on the submitted view brings them back up, so the Joey sees the confirmation.
     router.refresh();
   };
 
@@ -194,7 +194,7 @@ export function ApplicationForm({
             </Field>
             <Field
               label="Date of birth"
-              hint="Only used to confirm you're 18 or older. It isn't shared with Hosts."
+              hint="Used to confirm you're eligible to work. It isn't shared with Hosts."
               missing={miss("date_of_birth") || missing.includes("under_18")}
               missingText={missing.includes("under_18") ? MISSING_LABELS.under_18 : "Required"}
             >
@@ -207,10 +207,21 @@ export function ApplicationForm({
             <Field label="Are you authorized to work in the U.S.?" missing={miss("work_authorized")}>
               {(id, d) => (
                 <SelectInput id={id} describedBy={d} options={WORK_AUTH_OPTIONS} invalid={miss("work_authorized")}
-                  value={draft.work_authorized} onChange={(v) => update("work_authorized", v)} />
+                  value={draft.work_authorized} onChange={(v) => {
+                    update("work_authorized", v);
+                    if (v !== "Other" && draft.work_auth_explanation) update("work_auth_explanation", null);
+                  }} />
               )}
             </Field>
-            <Field label="School and degree" hint="For example, UCLA, BS Nursing (2027)" missing={miss("school_degree")} className="sm:col-span-2">
+            {draft.work_authorized === "Other" && (
+              <Field label="Please explain your work authorization" missing={miss("work_auth_explanation")} className="sm:col-span-2">
+                {(id, d) => (
+                  <TextInput id={id} aria-describedby={d} invalid={miss("work_auth_explanation")}
+                    value={draft.work_auth_explanation ?? ""} onChange={(e) => update("work_auth_explanation", e.target.value)} />
+                )}
+              </Field>
+            )}
+            <Field label="School, degree, year" hint="For example, UCLA, BS Nursing, 2027" missing={miss("school_degree")} className="sm:col-span-2">
               {(id, d) => (
                 <TextInput id={id} aria-describedby={d} invalid={miss("school_degree")}
                   value={draft.school_degree ?? ""} onChange={(e) => update("school_degree", e.target.value)} />
@@ -221,12 +232,16 @@ export function ApplicationForm({
 
         <Section id="preferences">
           <div className="space-y-6">
-            <CityPicker legend="Preferred cities" hint="Choose every city you'd move to. Not on our list? Type it in."
+            <CityPicker legend="Preferred cities" hint="Choose every city you'd live in. Not on our list? Type it in."
               value={draft.preferred_cities}
               onChange={(v) => update("preferred_cities", v)} missing={miss("preferred_cities")} />
-            <ChoiceChips legend="When are you looking to move in?" multiple={false}
-              options={MOVE_IN_OPTIONS} value={draft.move_in_timing ? [draft.move_in_timing] : []}
-              onChange={(v) => update("move_in_timing", v[0] ?? null)} missing={miss("move_in_timing")} />
+            <Field label="What's the earliest date you could move in?" hint="Your best guess is fine. You can tell us if it changes."
+              missing={miss("move_in_date")} className="sm:max-w-xs">
+              {(id, d) => (
+                <TextInput id={id} aria-describedby={d} type="date" min={todayPacific()} invalid={miss("move_in_date")}
+                  value={draft.move_in_date ?? ""} onChange={(e) => update("move_in_date", e.target.value || null)} />
+              )}
+            </Field>
             <ChoiceChips legend="I'd be comfortable working with Hosts who are" multiple={false}
               options={HOST_PREFERENCE_OPTIONS} value={draft.host_preference ? [draft.host_preference] : []}
               onChange={(v) => update("host_preference", v[0] ?? null)} missing={miss("host_preference")} />
@@ -255,9 +270,9 @@ export function ApplicationForm({
 
         <Section
           id="references"
-          intro="We contact your references after we review your application. We'll let you know before we reach out, so you can give them a heads-up."
+          intro="We'll need to talk to someone from your school, someone you have lived with, and someone you have worked for. You can come back to this step later, but adding names, how you know them, and contact info now helps move you more quickly to matching."
         >
-          <ReferencesEditor initial={references} editable onCountChange={setRefCount} showMissing={showMissing} />
+          <ReferencesEditor initial={references} editable onChange={(refs) => setRefTypes(refs.map((r) => r.reference_type))} showMissing={showMissing} />
         </Section>
 
         <Section

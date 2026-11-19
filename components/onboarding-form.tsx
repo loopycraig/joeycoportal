@@ -15,12 +15,12 @@ const ROLES: { value: Role; title: string; description: string }[] = [
   {
     value: "joey",
     title: "I'm a Joey",
-    description: "Log your hours each week and submit them to your Host.",
+    description: "I'm applying to live with a Host and help around their home in exchange for reduced rent and pay.",
   },
   {
     value: "host",
     title: "I'm a Host",
-    description: "Add your Joeys and approve the hours they submit.",
+    description: "I'm opening my home to a Joey who'll live with me and help out day to day.",
   },
 ];
 
@@ -69,7 +69,7 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
       <div className="grid gap-1">
         <h1 className="text-xl font-medium tracking-tight">Set up your account</h1>
         <p className="text-sm text-muted-foreground">
-          Tell us your name and how you&apos;ll use Joey.
+          Tell us your name and how you&apos;ll use JoeyCo.
         </p>
       </div>
 

@@ -19,11 +19,29 @@ export const JOEY = {
   motivation: "motivation",
   hostPreference: "host_preference",
   workAuthorization: "work_authorization",
-  moveInTimeline: "move_in_timeline",
+  workAuthorizationExplanation: "work_authorization_explanation", // text, when work_authorization is "Other"
+  moveInTimeline: "move_in_timeline", // single select, worked out from the earliest move-in date
+  earliestMoveInDate: "earliest_move_in_date", // date
   applicationSource: "application_source",
   codeOfConductSigned: "code_of_conduct_signed",
   preferredTasks: "preferred_tasks", // multi-select
   preferredCities: "preferred_cities", // multi-select
+  backgroundCheckStatus: "background_check_status", // Not Started, In Progress, Passed, Failed (read)
+} as const;
+
+/**
+ * Match Attempts: one per Joey proposed for a Host's search. Read while a Joey is at Match Ready to
+ * tell "Joining the Joey Community" from "Matching with Your Host".
+ */
+export const MATCH_ATTEMPT = {
+  object: "c_match_attempt",
+  joeyLink: "candidate_joey_id",
+  status: "status",
+  furthestStage: "furthest_stage_reached",
+  /** Statuses of an attempt that's still going. */
+  liveStatuses: ["Under consideration", "Active", "Verbal agreement reached"],
+  /** Furthest stages that mean the Joey and Host are meeting (one-pager Step 3). */
+  meetingStages: ["Virtual meeting", "In-person meetup", "Verbal agreement"],
 } as const;
 
 /**

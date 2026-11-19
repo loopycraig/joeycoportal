@@ -8,10 +8,15 @@ export type Application = {
   phone: string | null;
   date_of_birth: string | null;
   work_authorized: string | null;
+  /** Required when work_authorized is "Other". */
+  work_auth_explanation: string | null;
   school_degree: string | null;
   host_preference: string | null;
   preferred_cities: string[];
+  /** Older applications only; new ones give move_in_date. */
   move_in_timing: string | null;
+  /** The earliest date they could move in. */
+  move_in_date: string | null;
   services: string[];
   why_joey: string | null;
   heard_about: string | null;
@@ -47,12 +52,36 @@ export type Reference = {
 export type ReferenceInput = Omit<Reference, "id">;
 
 /** Must match the options on Clarify's c_reference.type field exactly. */
-export const REFERENCE_TYPES = ["Professional", "Institutional", "Landlord", "Housemate", "Personal"] as const;
+export const REFERENCE_TYPES = ["Institutional", "Professional", "Landlord", "Housemate", "Personal"] as const;
 export type ReferenceType = (typeof REFERENCE_TYPES)[number];
+
+/** What Joeys see for each type. The values stay Clarify's. */
+export const REFERENCE_TYPE_LABELS: Record<ReferenceType, string> = {
+  Institutional: "School or community",
+  Professional: "Work",
+  Landlord: "Landlord",
+  Housemate: "Housemate",
+  Personal: "Personal",
+};
 
 /** Shown under the picker so Joeys can tell the types apart. */
 export const REFERENCE_TYPE_HINT =
-  "Professional: a manager or coworker. Institutional: a professor, advisor, or coach. Landlord: someone you've rented from. Housemate: someone you've lived with. Personal: anyone else who knows you well, other than family.";
+  "School or community: a professor, advisor, coach, or mentor. Work: a manager or coworker. Landlord or Housemate: someone you've lived with. Personal: anyone else who knows you well, other than family.";
+
+/**
+ * The references every application needs, one of each (Joey Journey one-pager:
+ * "school or community, work, past landlord or housemate"). Keys match application_missing().
+ */
+export const REQUIRED_REFERENCE_KINDS: { key: string; label: string; types: ReferenceType[] }[] = [
+  { key: "reference_school", label: "a school or community reference", types: ["Institutional"] },
+  { key: "reference_work", label: "a work reference", types: ["Professional"] },
+  { key: "reference_home", label: "a landlord or housemate reference", types: ["Landlord", "Housemate"] },
+];
+
+/** The required kinds this list of references doesn't cover yet. */
+export function missingReferenceKinds(types: (ReferenceType | null)[]) {
+  return REQUIRED_REFERENCE_KINDS.filter((k) => !types.some((t) => t && k.types.includes(t)));
+}
 
 export const REFERENCE_SELECT = "id, full_name, reference_type, relationship, email, phone, known_for";
 
@@ -63,10 +92,11 @@ export const EDITABLE_FIELDS = [
   "phone",
   "date_of_birth",
   "work_authorized",
+  "work_auth_explanation",
   "school_degree",
   "host_preference",
   "preferred_cities",
-  "move_in_timing",
+  "move_in_date",
   "services",
   "why_joey",
   "heard_about",
@@ -84,26 +114,24 @@ export type EditableField = (typeof EDITABLE_FIELDS)[number];
 export type ApplicationDraft = Pick<Application, EditableField>;
 
 export const APPLICATION_SELECT =
-  "joey_id, first_name, last_name, phone, date_of_birth, work_authorized, school_degree, host_preference, preferred_cities, move_in_timing, services, why_joey, heard_about, conduct_signature, conduct_version, conduct_signed_at, news_opt_in, bg_disclosure_signature, bg_disclosure_version, bg_disclosure_signed_at, ca_disclosure_signature, ca_disclosure_version, ca_disclosure_signed_at, ca_report_copy_requested, status, submitted_at, stage_key, stage_changed_at";
+  "joey_id, first_name, last_name, phone, date_of_birth, work_authorized, work_auth_explanation, school_degree, host_preference, preferred_cities, move_in_timing, move_in_date, services, why_joey, heard_about, conduct_signature, conduct_version, conduct_signed_at, news_opt_in, bg_disclosure_signature, bg_disclosure_version, bg_disclosure_signed_at, ca_disclosure_signature, ca_disclosure_version, ca_disclosure_signed_at, ca_report_copy_requested, status, submitted_at, stage_key, stage_changed_at";
 
 // ─────────────────────────────────────────────
 // Answer choices
-// TODO: replace the lists marked "from Tally?" with the exact options from the Tally form.
 // Single-choice values must match the allowed values of the c_joey select fields in Clarify
-// (work_authorization, move_in_timeline, application_source, host_preference).
+// exactly (work_authorization, move_in_timeline, application_source, host_preference),
+// or Clarify rejects them.
 // ─────────────────────────────────────────────
 
-/** Single choice, sent to c_joey.host_preference. from Tally? */
-export const HOST_PREFERENCE_OPTIONS = ["Women", "Men", "No preference"];
+/** Single choice, sent to c_joey.host_preference. */
+export const HOST_PREFERENCE_OPTIONS = ["Older adults", "Families with children", "Both"];
 
-/** from Tally? */
-export const WORK_AUTH_OPTIONS = ["Yes", "Yes, with restrictions (for example, a student visa)", "No"];
+/** Sent to c_joey.work_authorization. "Other" asks for an explanation. */
+export const WORK_AUTH_OPTIONS = ["Yes", "No", "Not sure", "Other"];
 
-/** Must match the city names in lib/cities.js in the Tally webhook repo, which geocodes them. from Tally? */
 /**
- * Places JoeyCo is active. Must match the options on Clarify's Preferred Cities field exactly,
- * since only these are sent there. Joeys can also enter any other city; it's saved with their
- * application and shown as "not active yet".
+ * Cities on Clarify's Preferred Cities field. Must match its options exactly, since only these
+ * are sent there. Joeys can also type any other city; it's saved with their application.
  */
 export const SUPPORTED_CITIES = [
   "Alameda", "Anaheim", "Berkeley", "Beverly Hills", "Burbank", "Burlingame", "Camarillo",
@@ -138,8 +166,22 @@ export function isSupportedCity(city: string) {
   return supportedByKey.has(cityKey(city));
 }
 
-/** from Tally? */
-export const MOVE_IN_OPTIONS = ["As soon as possible", "Within 1 month", "In 1–3 months", "In 3 or more months"];
+/** Clarify's c_joey.move_in_timeline options. The portal asks for a date and works out the bucket. */
+export const MOVE_IN_OPTIONS = ["As soon as possible", "Within 6 months", "Within 1 year", "Other"] as const;
+
+/** Today's date in California, as YYYY-MM-DD. */
+export function todayPacific(now = new Date()) {
+  return now.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+}
+
+/** The Move-in timeline bucket for an earliest move-in date, counted from today. */
+export function moveInTimeline(date: string, today = todayPacific()): (typeof MOVE_IN_OPTIONS)[number] {
+  const days = (Date.parse(date) - Date.parse(today)) / 86_400_000;
+  if (days <= 31) return "As soon as possible";
+  if (days <= 183) return "Within 6 months";
+  if (days <= 366) return "Within 1 year";
+  return "Other";
+}
 
 /** Matches the Tally form */
 export const SERVICE_OPTIONS = [
@@ -155,18 +197,20 @@ export const SERVICE_OPTIONS = [
   "Hobbies & Interest Participation",
 ];
 
-/** from Tally? */
+/** Sent to c_joey.application_source. */
 export const HEARD_ABOUT_OPTIONS = [
-  "A friend or family member",
-  "My school",
+  "JoeyCo Website",
   "Instagram",
-  "TikTok",
-  "Search engine",
-  "News or article",
+  "Handshake",
+  "Indeed",
+  "Craigslist",
+  "Other Job Board",
+  "JoeyCo Community",
+  "Direct Email",
   "Other",
 ];
 
-export const MIN_REFERENCES = 2;
+export const MIN_REFERENCES = REQUIRED_REFERENCE_KINDS.length;
 export const MAX_REFERENCES = 5;
 
 // ─────────────────────────────────────────────
@@ -180,13 +224,13 @@ export const SECTIONS: { id: SectionId; title: string; checklistLabel: string; k
     id: "about",
     title: "About you",
     checklistLabel: "Tell us about yourself",
-    keys: ["first_name", "last_name", "phone", "date_of_birth", "under_18", "work_authorized", "school_degree"],
+    keys: ["first_name", "last_name", "phone", "date_of_birth", "under_18", "work_authorized", "work_auth_explanation", "school_degree"],
   },
   {
     id: "preferences",
     title: "Match preferences",
     checklistLabel: "Choose your cities, timing, and the help you'd offer",
-    keys: ["preferred_cities", "move_in_timing", "host_preference", "services"],
+    keys: ["preferred_cities", "move_in_date", "host_preference", "services"],
   },
   {
     id: "story",
@@ -197,8 +241,8 @@ export const SECTIONS: { id: SectionId; title: string; checklistLabel: string; k
   {
     id: "references",
     title: "References",
-    checklistLabel: `Add at least ${MIN_REFERENCES} references`,
-    keys: ["references"],
+    checklistLabel: "Add a reference from your school or community, work, and someone you've lived with",
+    keys: REQUIRED_REFERENCE_KINDS.map((k) => k.key),
   },
   {
     id: "acknowledgements",
@@ -215,17 +259,18 @@ export const MISSING_LABELS: Record<string, string> = {
   date_of_birth: "Date of birth",
   under_18: "You need to be 18 or older to apply",
   work_authorized: "Work authorization",
-  school_degree: "School and degree",
+  work_auth_explanation: "An explanation of your work authorization",
+  school_degree: "School, degree, year",
   host_preference: "Hosts you'd be comfortable working with",
   preferred_cities: "At least one city",
-  move_in_timing: "Move-in timing",
+  move_in_date: "Earliest move-in date",
   services: "At least one kind of help",
   why_joey: "Why you want to be a Joey",
   heard_about: "How you heard about us",
   conduct_signature: "Your signature on the Code of Conduct",
   bg_disclosure_signature: "Your signature on the background check disclosure",
   ca_disclosure_signature: "Your signature on the California disclosure",
-  references: `At least ${MIN_REFERENCES} references`,
+  ...Object.fromEntries(REQUIRED_REFERENCE_KINDS.map((k) => [k.key, k.label.charAt(0).toUpperCase() + k.label.slice(1)])),
 };
 
 const blank = (v: string | null | undefined) => !v || v.trim() === "";
@@ -238,7 +283,7 @@ export function isAdult(dob: string, today = new Date()): boolean {
 
 /** Same keys and order as public.application_missing(), plus the two disclosure signatures
  *  (see supabase/migrations/20261112_background_check_disclosures.sql). */
-export function missingFields(a: ApplicationDraft, referenceCount: number): string[] {
+export function missingFields(a: ApplicationDraft, referenceTypes: (ReferenceType | null)[]): string[] {
   const out: string[] = [];
   if (blank(a.first_name)) out.push("first_name");
   if (blank(a.last_name)) out.push("last_name");
@@ -246,15 +291,16 @@ export function missingFields(a: ApplicationDraft, referenceCount: number): stri
   if (!a.date_of_birth) out.push("date_of_birth");
   else if (!isAdult(a.date_of_birth)) out.push("under_18");
   if (blank(a.work_authorized)) out.push("work_authorized");
+  if (a.work_authorized === "Other" && blank(a.work_auth_explanation)) out.push("work_auth_explanation");
   if (blank(a.school_degree)) out.push("school_degree");
   if (blank(a.host_preference)) out.push("host_preference");
   if (a.preferred_cities.length === 0) out.push("preferred_cities");
-  if (blank(a.move_in_timing)) out.push("move_in_timing");
+  if (!a.move_in_date) out.push("move_in_date");
   if (a.services.length === 0) out.push("services");
   if (blank(a.why_joey)) out.push("why_joey");
   if (blank(a.heard_about)) out.push("heard_about");
   if (blank(a.conduct_signature)) out.push("conduct_signature");
-  if (referenceCount < MIN_REFERENCES) out.push("references");
+  for (const k of missingReferenceKinds(referenceTypes)) out.push(k.key);
   if (blank(a.bg_disclosure_signature)) out.push("bg_disclosure_signature");
   if (blank(a.ca_disclosure_signature)) out.push("ca_disclosure_signature");
   return out;
