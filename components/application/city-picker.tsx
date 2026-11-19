@@ -3,7 +3,7 @@
 import { useId, useMemo, useRef, useState } from "react";
 import { Check, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SUPPORTED_CITIES, isSupportedCity, normalizeCity } from "@/lib/joey/application";
+import { SUPPORTED_CITIES, isInCalifornia, isSupportedCity, normalizeCity } from "@/lib/joey/application";
 
 type Option = { kind: "supported"; city: string } | { kind: "custom"; city: string };
 
@@ -53,6 +53,7 @@ export function CityPicker({
     inputRef.current?.focus();
   };
   const remove = (city: string) => onChange(value.filter((v) => v !== city));
+  const outside = value.filter((c) => !isInCalifornia(c));
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
@@ -166,7 +167,20 @@ export function CityPicker({
         )}
       </div>
 
+      {outside.length > 0 && (
+        <p className="text-xs text-muted-foreground" role="status">
+          We only match Joeys with Hosts in California for now, and {listOf(outside)}{" "}
+          {outside.length === 1 ? "doesn't look like it's" : "don't look like they're"} in California. You can
+          keep {outside.length === 1 ? "it" : "them"}, but we may not have Hosts there yet.
+        </p>
+      )}
+
       {missing && <p className="text-xs text-destructive">{missingText ?? "Required"}</p>}
     </fieldset>
   );
+}
+
+function listOf(items: string[]) {
+  if (items.length <= 2) return items.join(" and ");
+  return `${items.slice(0, -1).join(", ")}, and ${items.at(-1)}`;
 }
