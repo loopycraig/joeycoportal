@@ -92,7 +92,7 @@ function WideBar({ steps }: { steps: JourneyStep[] }) {
               <Marker state={s.state} n={i + 1} />
               <span
                 className={cn(
-                  "w-full truncate text-center text-xs",
+                  "line-clamp-2 w-full text-balance text-center text-xs leading-tight",
                   s.state === "upcoming" ? "text-muted-foreground group-hover:text-foreground" : "font-medium",
                   s.state === "current" && "text-foreground",
                 )}
@@ -171,7 +171,7 @@ function StepBrief({ step: s }: { step: JourneyStep }) {
         : s.state === "paused"
           ? "Paused here"
           : s.typicalDuration
-            ? `Usually takes ${s.typicalDuration.toLowerCase()}`
+            ? `Typical timing: ${s.typicalDuration.charAt(0).toLowerCase()}${s.typicalDuration.slice(1)}`
             : "Coming up";
   return (
     <>

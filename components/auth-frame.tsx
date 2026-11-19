@@ -10,7 +10,7 @@ export function AuthFrame({ children }: { children: React.ReactNode }) {
           className="rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/joey-logo.png" alt="Joey" className="h-6 w-auto" />
+          <img src="/joey-logo.png" alt="JoeyCo" className="h-6 w-auto" />
         </Link>
       </header>
       <main className="flex flex-1 items-center justify-center px-6 pb-20">

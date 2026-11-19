@@ -6,9 +6,10 @@ import { Field, SelectInput, TextInput } from "@/components/application/fields";
 import { addReference, removeReference, updateReference } from "@/lib/joey/actions";
 import {
   MAX_REFERENCES,
-  MIN_REFERENCES,
   REFERENCE_TYPE_HINT,
+  REFERENCE_TYPE_LABELS,
   REFERENCE_TYPES,
+  missingReferenceKinds,
   validateReference,
   type Reference,
   type ReferenceInput,
@@ -19,20 +20,21 @@ const EMPTY: ReferenceInput = { full_name: "", reference_type: null, relationshi
 export function ReferencesEditor({
   initial,
   editable,
-  onCountChange,
+  onChange,
   showMissing,
 }: {
   initial: Reference[];
   editable: boolean;
-  onCountChange?: (n: number) => void;
+  onChange?: (refs: Reference[]) => void;
   showMissing?: boolean;
 }) {
   const [refs, setRefs] = useState(initial);
   const [editing, setEditing] = useState<string | "new" | null>(null);
+  const stillNeeded = missingReferenceKinds(refs.map((r) => r.reference_type));
 
   const setAndReport = (next: Reference[]) => {
     setRefs(next);
-    onCountChange?.(next.length);
+    onChange?.(next);
   };
 
   return (
@@ -40,7 +42,7 @@ export function ReferencesEditor({
       {refs.length === 0 && editing !== "new" && (
         <p className="rounded-md border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
           {editable
-            ? `Add ${MIN_REFERENCES} to ${MAX_REFERENCES} people who know you well, like a manager, professor, or someone you've helped care for. Family members don't count.`
+            ? `No references yet. Add up to ${MAX_REFERENCES}. Family members don't count.`
             : "No references listed."}
         </p>
       )}
@@ -102,13 +104,10 @@ export function ReferencesEditor({
         </Button>
       )}
 
-      {editable && refs.length > 0 && refs.length < MIN_REFERENCES && (
+      {editable && (refs.length > 0 || showMissing) && stillNeeded.length > 0 && (
         <p className={showMissing ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>
-          Add {MIN_REFERENCES - refs.length} more to submit.
+          Still needed to submit: {listOf(stillNeeded.map((k) => k.label))}.
         </p>
-      )}
-      {editable && refs.length === 0 && showMissing && (
-        <p className="text-xs text-destructive">Add at least {MIN_REFERENCES} references to submit.</p>
       )}
     </div>
   );
@@ -134,7 +133,7 @@ function ReferenceRow({
       <div className="min-w-0 flex-1">
         <p className="font-medium">
           {r.full_name}
-          {r.reference_type && <span className="font-normal text-muted-foreground"> · {r.reference_type}</span>}
+          {r.reference_type && <span className="font-normal text-muted-foreground"> · {REFERENCE_TYPE_LABELS[r.reference_type]}</span>}
         </p>
         <p className="text-muted-foreground">
           {r.relationship}, known for {r.known_for}
@@ -231,7 +230,7 @@ function ReferenceForm({
         </Field>
         <Field label="Type of reference" hint={REFERENCE_TYPE_HINT}>
           {(id, d) => (
-            <SelectInput id={id} describedBy={d} options={[...REFERENCE_TYPES]} value={r.reference_type}
+            <SelectInput id={id} describedBy={d} options={[...REFERENCE_TYPES]} labels={REFERENCE_TYPE_LABELS} value={r.reference_type}
               onChange={(v) => setR({ ...r, reference_type: v as ReferenceInput["reference_type"] })} />
           )}
         </Field>
@@ -263,4 +262,9 @@ function ReferenceForm({
       </div>
     </div>
   );
+}
+
+function listOf(xs: string[]) {
+  if (xs.length <= 2) return xs.join(" and ");
+  return `${xs.slice(0, -1).join(", ")}, and ${xs[xs.length - 1]}`;
 }

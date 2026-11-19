@@ -9,6 +9,7 @@ import { ApplicationForm } from "@/components/application/application-form";
 import { ApplicationSummary } from "@/components/application/application-summary";
 import { JourneyBar } from "@/components/application/journey-bar";
 import { StageStatus, journeySteps } from "@/components/application/journey";
+import { ScrollToTop } from "@/components/scroll-to-top";
 
 // The one onboarding page: the whole journey across the top, and below it
 // either the application form (draft) or where things stand (submitted).
@@ -35,8 +36,9 @@ async function ApplicationContent() {
   if (application.status === "submitted") {
     return (
       <>
+        <ScrollToTop />
         {bar}
-        <StageStatus stages={stages} events={events} currentStage={currentStage} />
+        <StageStatus stages={stages} currentStage={currentStage} />
         <SectionHeader>Your application</SectionHeader>
         <ApplicationSummary
           application={application}
