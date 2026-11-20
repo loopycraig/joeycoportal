@@ -3,6 +3,9 @@ import { cn } from "@/lib/utils";
 import type { Stage, StageEvent } from "@/lib/joey/queries";
 import type { JourneyStep, StepState } from "@/components/application/journey-bar";
 
+/** What journeySteps needs from a stage. Joey and Host stages both have these. */
+export type JourneyStage = Pick<Stage, "key" | "sort_order" | "step" | "title" | "owner_label" | "typical_duration" | "on_path">;
+
 const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
 /**
@@ -10,7 +13,7 @@ const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: 
  * Started: applying, then submitted), so stages are grouped by their step. When paused or closed,
  * the path stops at the last on-path step reached.
  */
-export function journeySteps(stages: Stage[], events: StageEvent[], currentStage: Stage): JourneyStep[] {
+export function journeySteps<S extends JourneyStage>(stages: S[], events: StageEvent[], currentStage: S): JourneyStep[] {
   const onPath = stages.filter((s) => s.on_path);
   const firstAt = new Map<string, string>();
   for (const e of events) if (!firstAt.has(e.stage_key)) firstAt.set(e.stage_key, e.occurred_at);
@@ -18,7 +21,7 @@ export function journeySteps(stages: Stage[], events: StageEvent[], currentStage
   const offPath = !currentStage.on_path;
   const reached = offPath ? onPath.findLast((s) => firstAt.has(s.key)) ?? onPath[0] : currentStage;
 
-  const groups: { step: string; stages: Stage[] }[] = [];
+  const groups: { step: string; stages: S[] }[] = [];
   for (const s of onPath) {
     const step = s.step ?? s.title;
     const last = groups.at(-1);

@@ -1,6 +1,7 @@
 "use client";
 
 import { registerJoeySignUp } from "@/lib/joey/actions";
+import { registerHostSignUp } from "@/lib/host/actions";
 import { createClient } from "@/lib/supabase/client";
 import { friendlyError } from "@/lib/errors";
 import { homeFor, type Role } from "@/lib/roles";
@@ -55,6 +56,8 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
 
       // A new Joey goes to Clarify at Sign Up right away. Never holds up their first page.
       if (role === "joey") await registerJoeySignUp().catch(() => {});
+      // A new Host's application is waiting for them. It reaches Clarify when they submit it.
+      if (role === "host") await registerHostSignUp().catch(() => {});
 
       router.push(homeFor(role));
       router.refresh();
