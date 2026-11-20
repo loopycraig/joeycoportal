@@ -74,6 +74,33 @@ export const REFERENCE = {
   // stage, notes and interview notes are left for the team
 } as const;
 
+/**
+ * The custom Host object. Fields match api/host-apply.js (the Tally host form handler), so portal
+ * and Tally Hosts look the same to the team. Checked against Clarify's schema.
+ */
+export const HOST = {
+  object: "c_host",
+  personLink: "host_person_id", // many-to-one relationship to the Host's Person record
+
+  name: "name",
+  email: "email", // text; the team sometimes puts two addresses here
+  phone: "phone_number",
+  zip: "zip_code",
+  latitude: "latitude",
+  longitude: "longitude",
+  stage: "stage", // single select; Clarify owns this after the first push
+  helpTypes: "type_of_help_needed", // multi-select
+  childcare: "childcare_needs", // single select
+  medical: "medical_needs",
+  otherHelp: "other_help",
+  helpDetails: "help_details",
+  weeklyHours: "weekly_hours_needed", // single select
+  amenities: "amenities", // multi-select
+} as const;
+
+/** Written when a Host submits, as the Tally handler does. Only on a new record. */
+export const HOST_INITIAL_STAGE = "Assignment";
+
 /** Written when someone picks Joey in the portal: their Joey record starts at Sign Up. */
 export const SIGN_UP_VALUES = {
   stage: "Sign Up",
